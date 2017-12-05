@@ -262,8 +262,8 @@ Product {
                 ]
             } else {
                 return [
-                    "MSVCP120.DLL",
-                    "MSVCR120.DLL",
+                    "MSVCP140.DLL",
+                    "MSVCR140.DLL",
                 ]
             }
         }
