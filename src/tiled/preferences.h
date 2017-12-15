@@ -110,7 +110,8 @@ public:
         ObjectTemplateFile,
         ImageFile,
         ExportedFile,
-        ExternalTileset
+        ExternalTileset,
+        WorldFile
     };
 
     QString lastPath(FileType fileType) const;

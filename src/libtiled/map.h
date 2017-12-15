@@ -123,10 +123,7 @@ public:
      */
     Map(const Map &map);
 
-    /**
-     * Destructor.
-     */
-    ~Map();
+    ~Map() override;
 
     /**
      * Returns the orientation of the map.

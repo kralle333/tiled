@@ -99,7 +99,7 @@ private:
     Q_DISABLE_COPY(TilesetManager)
 
     TilesetManager();
-    ~TilesetManager();
+    ~TilesetManager() override;
 
     static TilesetManager *mInstance;
 

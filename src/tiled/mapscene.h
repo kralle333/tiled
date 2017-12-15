@@ -27,8 +27,7 @@
 
 #include <QColor>
 #include <QGraphicsScene>
-#include <QMap>
-#include <QSet>
+#include <QHash>
 
 namespace Tiled {
 
@@ -108,7 +107,7 @@ private:
     bool eventFilter(QObject *object, QEvent *event) override;
 
     MapDocument *mMapDocument;
-    MapItem *mMapItem;
+    QHash<MapDocument*, MapItem*> mMapItems;
     AbstractTool *mSelectedTool;
     AbstractTool *mActiveTool;
     bool mGridVisible;

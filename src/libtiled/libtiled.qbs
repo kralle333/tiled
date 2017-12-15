@@ -108,6 +108,8 @@ DynamicLibrary {
         "varianttomapconverter.h",
         "wangset.cpp",
         "wangset.h",
+        "worldmanager.cpp",
+        "worldmanager.h",
     ]
 
     Group {

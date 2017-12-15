@@ -208,8 +208,9 @@ template <class T>
 static T *first(const QList<QGraphicsItem *> &items)
 {
     for (QGraphicsItem *item : items) {
-        if (T *t = qgraphicsitem_cast<T*>(item))
-            return t;
+        if (item->isEnabled())
+            if (T *t = qgraphicsitem_cast<T*>(item))
+                return t;
     }
     return nullptr;
 }
@@ -239,8 +240,10 @@ void EditPolygonTool::mousePressed(QGraphicsSceneMouseEvent *event)
                                                                viewTransform(event));
 
         mClickedObjectItem = nullptr;
-        for (int i = 0; i < items.size(); ++i) {
-            if (auto mapObjectItem = qgraphicsitem_cast<MapObjectItem*>(items.at(i))) {
+        for (QGraphicsItem *item : items) {
+            if (!item->isEnabled())
+                continue;
+            if (auto mapObjectItem = qgraphicsitem_cast<MapObjectItem*>(item)) {
                 if (mapObjectItem->mapObject()->objectGroup()->isUnlocked()) {
                     mClickedObjectItem = mapObjectItem;
                     break;
@@ -448,6 +451,8 @@ void EditPolygonTool::updateSelection(QGraphicsSceneMouseEvent *event)
         QList<MapObject*> selectedObjects;
 
         for (QGraphicsItem *item : intersectedItems) {
+            if (!item->isEnabled())
+                continue;
             auto mapObjectItem = qgraphicsitem_cast<MapObjectItem*>(item);
             if (mapObjectItem && mapObjectItem->mapObject()->objectGroup()->isUnlocked())
                 selectedObjects.append(mapObjectItem->mapObject());
