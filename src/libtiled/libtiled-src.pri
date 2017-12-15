@@ -37,7 +37,8 @@ SOURCES += $$PWD/compression.cpp \
     $$PWD/tilesetformat.cpp \
     $$PWD/tilesetmanager.cpp \
     $$PWD/varianttomapconverter.cpp \
-    $$PWD/wangset.cpp
+    $$PWD/wangset.cpp \
+    $$PWD/worldmanager.cpp
 HEADERS += $$PWD/compression.h \
     $$PWD/filesystemwatcher.h \
     $$PWD/gidmapper.h \
@@ -78,4 +79,5 @@ HEADERS += $$PWD/compression.h \
     $$PWD/tilesetformat.h \
     $$PWD/tilesetmanager.h \
     $$PWD/varianttomapconverter.h \
-    $$PWD/wangset.h
+    $$PWD/wangset.h \
+    $$PWD/worldmanager.h
