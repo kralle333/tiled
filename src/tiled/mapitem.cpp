@@ -77,7 +77,7 @@ MapItem::MapItem(MapDocument *mapDocument, QGraphicsItem *parent)
     connect(mapDocument, &MapDocument::layerChanged, this, &MapItem::layerChanged);
     connect(mapDocument, &MapDocument::objectGroupChanged, this, &MapItem::objectGroupChanged);
     connect(mapDocument, &MapDocument::imageLayerChanged, this, &MapItem::imageLayerChanged);
-    connect(mapDocument, &MapDocument::currentLayerChanged, this, &MapItem::currentLayerChanged);
+    connect(mapDocument, &MapDocument::selectedLayersChanged, this, &MapItem::updateCurrentLayerHighlight);
     connect(mapDocument, &MapDocument::tilesetTileOffsetChanged, this, &MapItem::adaptToTilesetTileSizeChanges);
     connect(mapDocument, &MapDocument::tileImageSourceChanged, this, &MapItem::adaptToTileSizeChanges);
     connect(mapDocument, &MapDocument::tilesetReplaced, this, &MapItem::tilesetReplaced);
@@ -120,11 +120,6 @@ void MapItem::repaintRegion(const QRegion &region, TileLayer *tileLayer)
     }
 }
 
-void MapItem::currentLayerChanged()
-{
-    updateCurrentLayerHighlight();
-}
-
 void MapItem::mapChanged()
 {
     for (QGraphicsItem *item : mLayerItems) {
@@ -134,7 +129,6 @@ void MapItem::mapChanged()
 
     for (MapObjectItem *item : mObjectItems)
         item->syncWithMapObject();
-
 }
 
 void MapItem::tileLayerChanged(TileLayer *tileLayer)
@@ -447,9 +441,9 @@ LayerItem *MapItem::createLayerItem(Layer *layer)
 void MapItem::updateCurrentLayerHighlight()
 {
     Preferences *prefs = Preferences::instance();
-    const auto currentLayer = mMapDocument->currentLayer();
+    const auto selectedLayers = mMapDocument->selectedLayers();
 
-    if (!prefs->highlightCurrentLayer() || !currentLayer) {
+    if (!prefs->highlightCurrentLayer() || selectedLayers.isEmpty()) {
         if (mDarkRectangle->isVisible()) {
             mDarkRectangle->setVisible(false);
 
@@ -462,9 +456,19 @@ void MapItem::updateCurrentLayerHighlight()
         return;
     }
 
-    // Darken layers below the current layer
-    const int siblingIndex = currentLayer->siblingIndex();
-    const auto parentLayer = currentLayer->parentLayer();
+    Layer *lowestSelectedLayer = nullptr;
+    LayerIterator iterator(mMapDocument->map());
+    while (Layer *layer = iterator.next()) {
+        if (selectedLayers.contains(layer)) {
+            lowestSelectedLayer = layer;
+            break;
+        }
+    }
+    Q_ASSERT(lowestSelectedLayer);
+
+    // Darken layers below the lowest selected layer
+    const int siblingIndex = lowestSelectedLayer->siblingIndex();
+    const auto parentLayer = lowestSelectedLayer->parentLayer();
     QGraphicsItem *parentItem = mLayerItems.value(parentLayer);
     if (!parentItem)
         parentItem = this;
@@ -474,16 +478,17 @@ void MapItem::updateCurrentLayerHighlight()
     mDarkRectangle->setVisible(true);
 
     // Set layers above the current layer to reduced opacity
-    LayerIterator iterator(mMapDocument->map());
-    qreal multiplier = 1;
+    iterator.toFront();
+    bool foundSelected = false;
 
     while (Layer *layer = iterator.next()) {
-        GroupLayer *groupLayer = layer->asGroupLayer();
-        if (!groupLayer)
-            mLayerItems.value(layer)->setOpacity(layer->opacity() * multiplier);
+        bool isSelected = selectedLayers.contains(layer);
+        foundSelected |= isSelected;
 
-        if (layer == currentLayer)
-            multiplier = opacityFactor;
+        if (!layer->isGroupLayer()) {
+            qreal multiplier = (foundSelected && !isSelected) ? opacityFactor : 1;
+            mLayerItems.value(layer)->setOpacity(layer->opacity() * multiplier);
+        }
     }
 }
 
