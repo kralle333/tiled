@@ -677,6 +677,9 @@ void MapWriterPrivate::writeLayerAttributes(QXmlStreamWriter &w,
         w.writeAttribute(QLatin1String("offsetx"), QString::number(offset.x()));
         w.writeAttribute(QLatin1String("offsety"), QString::number(offset.y()));
     }
+
+    if (layer.allowedTileSet() != QLatin1String("All"))
+        w.writeAttribute(QLatin1String("allowedtileset"), layer.allowedTileSet());
 }
 
 void MapWriterPrivate::writeObjectGroup(QXmlStreamWriter &w,

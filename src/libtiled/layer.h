@@ -187,6 +187,20 @@ public:
     virtual void replaceReferencesToTileset(Tileset *oldTileset,
                                             Tileset *newTileset) = 0;
 
+    inline bool canUseTileSet(const Tileset *tileset) const
+    {
+        return  mAllowedTileSet.isEmpty() || QString::compare(tileset->name(), mAllowedTileSet) == 0;
+    }
+
+    inline const QString allowedTileSet() const
+    {
+        return mAllowedTileSet;
+    }
+    inline void setAllowedTileSet(QString tileSetName)
+    {
+        mAllowedTileSet = tileSetName;
+    }
+
     /**
      * Returns whether this layer can merge together with the \a other layer.
      */
@@ -240,6 +254,7 @@ protected:
     Map *mMap;
     GroupLayer *mParentLayer;
     bool mLocked;
+    QString mAllowedTileSet;
 
     friend class Map;
     friend class GroupLayer;

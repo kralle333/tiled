@@ -444,6 +444,11 @@ void LayerModel::setLayerLocked(Layer *layer, bool locked)
     emit layerChanged(layer);
 }
 
+void LayerModel::setLayerAllowedTileSet(Layer *layer, QString allowedTileSet)
+{
+    layer->setAllowedTileSet(allowedTileSet);
+}
+
 /**
  * Sets the opacity of the layer at the given index.
  */

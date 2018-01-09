@@ -125,6 +125,7 @@ private:
         RotationProperty,
         VisibleProperty,
         LockedProperty,
+        AllowedTileSetsProperty,
         OpacityProperty,
         TextProperty,
         TextAlignmentProperty,
@@ -211,6 +212,7 @@ private:
     void updateCustomPropertyColor(const QString &name);
 
     void retranslateUi();
+    const QStringList getTilesetsOptions() const;
 
     bool mUpdating;
     int mMapObjectFlags;

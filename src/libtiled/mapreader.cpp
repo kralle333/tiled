@@ -708,6 +708,7 @@ static void readLayerAttributes(Layer &layer,
                          atts.value(QLatin1String("offsety")).toDouble());
 
     layer.setOffset(offset);
+    layer.setAllowedTileSet(atts.value(QLatin1String("allowedtileset")).toString());
 }
 
 TileLayer *MapReaderPrivate::readTileLayer()
