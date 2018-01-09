@@ -120,7 +120,36 @@ QVariant MapObjectModel::data(const QModelIndex &index, int role) const
         case Qt::EditRole:
             switch (index.column()) {
             case Name:
-                return mapObject->name();
+            {
+                QString returnedName = mapObject->name();
+                if (role == Qt::DisplayRole)
+                {
+                    switch (mapObject->shape())
+                    {
+                    case MapObject::Shape::Ellipse:
+                    case MapObject::Shape::Point:
+                    case MapObject::Shape::Polygon:
+                    case MapObject::Shape::Polyline:
+                        returnedName += QLatin1String(" (") + MapObject::ShapeToString(mapObject->shape()) + QLatin1Char(')');
+                        break;
+                    case MapObject::Shape::Text:
+                        returnedName += QLatin1String(" (Text: ") + mapObject->textData().text + QLatin1Char(')');
+                        break;
+                    case MapObject::Shape::Rectangle:
+                        if (mapObject->cell().tile() != nullptr && !mapObject->cell().tile()->imageSource().isEmpty())
+                        {
+                            returnedName +=
+                                QLatin1String(" (")
+                                + mapObject->cell().tile()->imageSource().fileName().section(QLatin1Char('.'), 0, 0)
+                                + QLatin1Char(')');
+                            break;
+                        }
+                        returnedName += QLatin1String(" (") + MapObject::ShapeToString(mapObject->shape()) + QLatin1Char(')');
+                        break;
+                    }
+                }
+                return returnedName;
+            }
             case Type:
                 return mapObject->effectiveType();
             case Id:
