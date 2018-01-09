@@ -395,48 +395,90 @@ void ObjectSelectionTool::keyPressed(QKeyEvent *event)
     }
 
     QPointF moveBy;
+    float rotateBy = 0;
 
     switch (event->key()) {
     case Qt::Key_Up:    moveBy = QPointF(0, -1); break;
     case Qt::Key_Down:  moveBy = QPointF(0, 1); break;
     case Qt::Key_Left:  moveBy = QPointF(-1, 0); break;
     case Qt::Key_Right: moveBy = QPointF(1, 0); break;
+    case Qt::Key_J: rotateBy = -1; break;
+    case Qt::Key_K: rotateBy = 1; break;
     default:
+        int key = event->key();
         AbstractObjectTool::keyPressed(event);
         return;
     }
 
-    const QList<MapObject*> &objects = mapDocument()->selectedObjects();
-    const Qt::KeyboardModifiers modifiers = event->modifiers();
-
-    if (moveBy.isNull() || objects.isEmpty() || (modifiers & Qt::ControlModifier)) {
+    if (rotateBy == 0 && moveBy.isNull())
+    {
         event->ignore();
         return;
     }
+    const QList<MapObject*> &objects = mapDocument()->selectedObjects();
+    const Qt::KeyboardModifiers modifiers = event->modifiers();
 
-    const bool moveFast = modifiers & Qt::ShiftModifier;
-    const bool snapToFineGrid = Preferences::instance()->snapToFineGrid();
-
-    if (moveFast) {
-        // TODO: This only makes sense for orthogonal maps
-        moveBy.rx() *= mapDocument()->map()->tileWidth();
-        moveBy.ry() *= mapDocument()->map()->tileHeight();
-        if (snapToFineGrid)
-            moveBy /= Preferences::instance()->gridFine();
+    if (objects.isEmpty() || (modifiers & Qt::ControlModifier)) {
+        event->ignore();
+        return;
     }
-
+    const bool moveFast = modifiers & Qt::ShiftModifier;
     QUndoStack *undoStack = mapDocument()->undoStack();
-    undoStack->beginMacro(tr("Move %n Object(s)", "", objects.size()));
-    int i = 0;
-    for (MapObject *object : objects) {
-        const QPointF oldPos = object->position();
-        const QPointF newPos = oldPos + moveBy;
-        undoStack->push(new MoveMapObject(mapDocument(), object, newPos, oldPos));
-        ++i;
+
+    //If arrow keys were pressed move object(s)
+    if (!moveBy.isNull())
+    {
+        const bool snapToFineGrid = Preferences::instance()->snapToFineGrid();
+        if (moveFast) {
+            // TODO: This only makes sense for orthogonal maps
+            moveBy.rx() *= mapDocument()->map()->tileWidth();
+            moveBy.ry() *= mapDocument()->map()->tileHeight();
+            if (snapToFineGrid)
+                moveBy /= Preferences::instance()->gridFine();
+        }
+
+        undoStack->beginMacro(tr("Move %n Object(s)", "", objects.size()));
+        int i = 0;
+        for (MapObject *object : objects) {
+            const QPointF oldPos = object->position();
+            const QPointF newPos = oldPos + moveBy;
+            undoStack->push(new MoveMapObject(mapDocument(), object, newPos, oldPos));
+            ++i;
+        }
+    }
+    else if (rotateBy != 0)
+    {
+        rotateBy *= M_PI / 180; // 1 degrees in radians
+        if (moveFast) {
+            rotateBy *= 15;
+        }
+
+        MapRenderer *renderer = mapDocument()->renderer();
+
+        mOrigin = mOriginIndicator->pos();
+
+
+        QUndoStack *undoStack = mapDocument()->undoStack();
+        undoStack->beginMacro(tr("Rotate %n Object(s)", "", objects.size()));
+        for (MapObject *object : objects) {
+            const QPointF offset = object->objectGroup()->totalOffset();
+
+            const QPointF oldPosition = object->position();
+            const QPointF oldRelPos = oldPosition + offset - mOrigin;
+            const qreal sn = std::sin(rotateBy);
+            const qreal cs = std::cos(rotateBy);
+            const QPointF newRelPos(oldRelPos.x() * cs - oldRelPos.y() * sn, oldRelPos.x() * sn + oldRelPos.y() * cs);
+            const QPointF newPosition = mOrigin + newRelPos - offset;
+            undoStack->push(new MoveMapObject(mapDocument(), object, newPosition, oldPosition));
+
+
+            const qreal oldRotation = object->rotation();
+            const qreal newRotation = oldRotation + rotateBy * 180 / M_PI;
+            undoStack->push(new RotateMapObject(mapDocument(), object, newRotation, oldRotation));
+        }
     }
     undoStack->endMacro();
 }
-
 void ObjectSelectionTool::mouseEntered()
 {
 }
