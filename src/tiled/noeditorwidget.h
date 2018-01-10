@@ -42,6 +42,7 @@ protected:
 
 private slots:
     void newMap();
+    void newMapFromTemplate();
     void newTileset();
     void openFile();
 

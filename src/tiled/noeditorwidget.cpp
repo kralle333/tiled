@@ -34,6 +34,7 @@ NoEditorWidget::NoEditorWidget(QWidget *parent) :
     ui->setupUi(this);
 
     connect(ui->newMapButton, &QPushButton::clicked, this, &NoEditorWidget::newMap);
+    connect(ui->newMapFromTemplateButton, &QPushButton::clicked, this, &NoEditorWidget::newMapFromTemplate);
     connect(ui->newTilesetButton, &QPushButton::clicked, this, &NoEditorWidget::newTileset);
     connect(ui->openFileButton, &QPushButton::clicked, this, &NoEditorWidget::openFile);
 }
@@ -59,7 +60,10 @@ void NoEditorWidget::newMap()
 {
     ActionManager::action("file.new_map")->trigger();
 }
-
+void NoEditorWidget::newMapFromTemplate()
+{
+    ActionManager::action("file.new_map_from_template")->trigger();
+}
 void NoEditorWidget::newTileset()
 {
     ActionManager::action("file.new_tileset")->trigger();
