@@ -109,6 +109,7 @@ protected:
 
 private slots:
     void newMap();
+    void newMapFromTemplate();
     void openFile();
     bool saveFile();
     bool saveFileAs();

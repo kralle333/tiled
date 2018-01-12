@@ -50,6 +50,7 @@
 #include "mapview.h"
 #include "minimaprenderer.h"
 #include "newmapdialog.h"
+#include "newmapfromtemplatedialog.h"
 #include "newtilesetdialog.h"
 #include "objectgroup.h"
 #include "objecttypeseditor.h"
@@ -201,6 +202,7 @@ MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
     mUi->setupUi(this);
 
     ActionManager::registerAction(mUi->actionNewMap, "file.new_map");
+    ActionManager::registerAction(mUi->actionNewMapFromTemplate, "file.new_map_from_template");
     ActionManager::registerAction(mUi->actionNewTileset, "file.new_tileset");
 
     auto *mapEditor = new MapEditor;
@@ -359,6 +361,7 @@ MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
     menuBar()->insertMenu(mUi->menuHelp->menuAction(), mLayerMenu);
 
     connect(mUi->actionNewMap, SIGNAL(triggered()), SLOT(newMap()));
+    connect(mUi->actionNewMapFromTemplate, SIGNAL(triggered()), SLOT(newMapFromTemplate()));
     connect(mUi->actionOpen, SIGNAL(triggered()), SLOT(openFile()));
     connect(mUi->actionClearRecentFiles, &QAction::triggered,
             preferences, &Preferences::clearRecentFiles);
@@ -653,7 +656,19 @@ void MainWindow::newMap()
 
     mDocumentManager->addDocument(mapDocument.take());
 }
+void MainWindow::newMapFromTemplate()
+{
+    NewMapFromTemplateDialog newMapDialog(this);
+    QScopedPointer<MapDocument> mapDocument(newMapDialog.createMap());
 
+    if (!mapDocument)
+        return;
+
+    if (!mDocumentManager->saveDocumentAs(mapDocument.data()))
+        return;
+
+    mDocumentManager->addDocument(mapDocument.take());
+}
 bool MainWindow::openFile(const QString &fileName, FileFormat *fileFormat)
 {
     if (fileName.isEmpty())

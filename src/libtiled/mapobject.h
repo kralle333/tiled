@@ -97,6 +97,33 @@ public:
         Point,
     };
 
+    static const QString ShapeToString(MapObject::Shape shape)
+    {
+        switch (shape)
+        {
+        case Tiled::MapObject::Rectangle:
+            return QString::fromLatin1("Rectangle");
+            break;
+        case Tiled::MapObject::Polygon:
+            return QString::fromLatin1("Polygon");
+            break;
+        case Tiled::MapObject::Polyline:
+            return QString::fromLatin1("Polyline");
+            break;
+        case Tiled::MapObject::Ellipse:
+            return QString::fromLatin1("Ellipse");
+            break;
+        case Tiled::MapObject::Text:
+            return QString::fromLatin1("Text");
+            break;
+        case Tiled::MapObject::Point:
+            return QString::fromLatin1("Point");
+            break;
+        default:
+            return QString::fromLatin1("Unknown Type");
+        }
+    }
+
     /**
      * Can be used to get/set property values using QVariant.
      */

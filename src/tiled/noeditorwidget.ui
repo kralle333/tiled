@@ -49,6 +49,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="newMapFromTemplateButton">
+         <property name="text">
+          <string>New Map From Template...</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="newTilesetButton">
          <property name="text">
           <string>New Tileset...</string>

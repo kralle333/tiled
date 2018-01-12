@@ -41,7 +41,7 @@
      <x>0</x>
      <y>0</y>
      <width>553</width>
-     <height>27</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -63,6 +63,7 @@
       <string>&amp;New</string>
      </property>
      <addaction name="actionNewMap"/>
+     <addaction name="actionNewMapFromTemplate"/>
      <addaction name="actionNewTileset"/>
     </widget>
     <widget class="QMenu" name="menuCommand">
@@ -533,6 +534,14 @@
   <action name="actionNewMap">
    <property name="text">
     <string>New Map...</string>
+   </property>
+  </action>
+  <action name="actionNewMapFromTemplate">
+   <property name="text">
+    <string>New Map From Template...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+N</string>
    </property>
   </action>
   <action name="actionPasteInPlace">
