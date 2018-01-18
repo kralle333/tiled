@@ -30,7 +30,6 @@ class QGraphicsItem;
 namespace Tiled {
 namespace Internal {
 
-class MapObjectItem;
 class PointHandle;
 class SelectionRectangle;
 
@@ -47,6 +46,8 @@ public:
 
     void activate(MapScene *scene) override;
     void deactivate(MapScene *scene) override;
+
+    void keyPressed(QKeyEvent *event) override;
 
     void mouseEntered() override;
     void mouseMoved(const QPointF &pos,
@@ -69,6 +70,7 @@ private slots:
     void joinNodes();
     void splitSegments();
     void deleteSegment();
+    void extendPolyline();
 
 private:
     enum Mode {
@@ -98,7 +100,7 @@ private:
     bool mMousePressed;
     PointHandle *mHoveredHandle;
     PointHandle *mClickedHandle;
-    MapObjectItem *mClickedObjectItem;
+    MapObject *mClickedObject;
     QVector<QPointF> mOldHandlePositions;
     QMap<MapObject*, QPolygonF> mOldPolygons;
     QPointF mAlignPosition;

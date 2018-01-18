@@ -21,6 +21,7 @@
 #include "objectselectiontool.h"
 
 #include "changepolygon.h"
+#include "editpolygontool.h"
 #include "geometry.h"
 #include "layer.h"
 #include "map.h"
@@ -40,6 +41,7 @@
 #include "snaphelper.h"
 #include "tile.h"
 #include "tileset.h"
+#include "toolmanager.h"
 #include "utils.h"
 
 #include <QApplication>
@@ -317,9 +319,9 @@ ObjectSelectionTool::ObjectSelectionTool(QObject *parent)
     , mSelectionRectangle(new SelectionRectangle)
     , mOriginIndicator(new OriginIndicator)
     , mMousePressed(false)
-    , mHoveredObjectItem(nullptr)
+    , mHoveredObject(nullptr)
     , mHoveredHandle(nullptr)
-    , mClickedObjectItem(nullptr)
+    , mClickedObject(nullptr)
     , mClickedOriginIndicator(nullptr)
     , mClickedRotateHandle(nullptr)
     , mClickedResizeHandle(nullptr)
@@ -384,6 +386,11 @@ void ObjectSelectionTool::deactivate(MapScene *scene)
     disconnect(mapDocument(), &MapDocument::objectsRemoved,
                this, &ObjectSelectionTool::objectsRemoved);
 
+    mMousePressed = false;
+    mHoveredObject = nullptr;
+
+    mapDocument()->setHoveredMapObject(nullptr);
+
     AbstractObjectTool::deactivate(scene);
 }
 
@@ -404,6 +411,10 @@ void ObjectSelectionTool::keyPressed(QKeyEvent *event)
     case Qt::Key_Right: moveBy = QPointF(1, 0); break;
     case Qt::Key_J: rotateBy = -1; break;
     case Qt::Key_K: rotateBy = 1; break;
+    case Qt::Key_Escape:
+        if (!mapDocument()->selectedObjects().isEmpty())
+            mapDocument()->setSelectedObjects(QList<MapObject*>());
+            return;
     default:
         int key = event->key();
         AbstractObjectTool::keyPressed(event);
@@ -483,6 +494,11 @@ void ObjectSelectionTool::mouseEntered()
 {
 }
 
+void ObjectSelectionTool::mouseLeft()
+{
+    mapDocument()->setHoveredMapObject(nullptr);
+}
+
 void ObjectSelectionTool::mouseMoved(const QPointF &pos,
                                      Qt::KeyboardModifiers modifiers)
 {
@@ -506,7 +522,7 @@ void ObjectSelectionTool::mouseMoved(const QPointF &pos,
                 startRotating(pos);
             } else if (mClickedResizeHandle) {
                 startResizing();
-            } else if ((mClickedObjectItem || ((modifiers & Qt::AltModifier) && hasSelection)) &&
+            } else if ((mClickedObject || ((modifiers & Qt::AltModifier) && hasSelection)) &&
                        !(modifiers & Qt::ShiftModifier)) {
                 startMoving(pos, modifiers);
             } else {
@@ -566,7 +582,7 @@ void ObjectSelectionTool::mousePressed(QGraphicsSceneMouseEvent *event)
         }
 
         if (!clickedHandle) {
-            mClickedObjectItem = topMostObjectItemAt(mStart);
+            mClickedObject = topMostMapObjectAt(mStart);
         } else {
             mClickedOriginIndicator = dynamic_cast<OriginIndicator*>(clickedHandle);
             mClickedRotateHandle = dynamic_cast<RotateHandle*>(clickedHandle);
@@ -577,13 +593,13 @@ void ObjectSelectionTool::mousePressed(QGraphicsSceneMouseEvent *event)
     }
     case Qt::RightButton:
         if (event->modifiers() & Qt::AltModifier) {
-            QList<MapObjectItem*> underlyingObjectItems = objectItemsAt(event->scenePos());
+            QList<MapObject*> underlyingObjectItems = mapObjectsAt(event->scenePos());
             if (underlyingObjectItems.empty())
                 break;
             QMenu selectUnderlyingMenu;
 
             for (int i = 0; i < underlyingObjectItems.size(); ++i) {
-                MapObject *mapObject = underlyingObjectItems[i]->mapObject();
+                MapObject *mapObject = underlyingObjectItems[i];
                 QString objectName = mapObject->name();
                 if (objectName.isEmpty()) {
                     if (mapObject->type().isEmpty())
@@ -633,6 +649,8 @@ void ObjectSelectionTool::mouseReleased(QGraphicsSceneMouseEvent *event)
 {
     if (event->button() != Qt::LeftButton)
         return;
+    if (!mMousePressed)
+        return; // we didn't receive press so we should ignore this release
 
     switch (mAction) {
     case NoAction: {
@@ -643,43 +661,43 @@ void ObjectSelectionTool::mouseReleased(QGraphicsSceneMouseEvent *event)
         const Qt::KeyboardModifiers modifiers = event->modifiers();
         QList<MapObject*> selection = mapDocument()->selectedObjects();
         if (modifiers & Qt::AltModifier) {
-            const auto underlyingObjects = objectItemsAt(event->scenePos());
+            const auto underlyingObjects = mapObjectsAt(event->scenePos());
             if (underlyingObjects.isEmpty())
                 break;
 
             // Determine the item after the last selected item
-            MapObjectItem *nextItem = underlyingObjects.first();
+            MapObject *nextObject = underlyingObjects.first();
             for (int i = underlyingObjects.size() - 1; i >= 0; --i) {
-                MapObjectItem *underlyingObject = underlyingObjects.at(i);
-                if (selection.contains(underlyingObject->mapObject()))
+                MapObject *underlyingObject = underlyingObjects.at(i);
+                if (selection.contains(underlyingObject))
                     break;
-                nextItem = underlyingObject;
+                nextObject = underlyingObject;
             }
 
             // If the first and last item are already selected, try to find the
             // first non-selected item. If even that fails, we pretend to have
             // clicked the first item as usual to allow toggling the selection.
-            if (selection.contains(nextItem->mapObject())) {
+            if (selection.contains(nextObject)) {
                 for (int i = 1; i < underlyingObjects.size() - 1; ++i) {
-                    MapObjectItem *underlyingObject = underlyingObjects.at(i);
-                    if (!selection.contains(underlyingObject->mapObject())) {
-                        nextItem = underlyingObject;
+                    MapObject *underlyingObject = underlyingObjects.at(i);
+                    if (!selection.contains(underlyingObject)) {
+                        nextObject = underlyingObject;
                         break;
                     }
                 }
             }
 
-            mClickedObjectItem = nextItem;
+            mClickedObject = nextObject;
         }
-        if (mClickedObjectItem) {
+        if (mClickedObject) {
             if (modifiers & (Qt::ShiftModifier | Qt::ControlModifier)) {
-                int index = selection.indexOf(mClickedObjectItem->mapObject());
+                int index = selection.indexOf(mClickedObject);
                 if (index != -1)
                     selection.removeAt(index);
                 else
-                    selection.append(mClickedObjectItem->mapObject());
+                    selection.append(mClickedObject);
                 mapDocument()->setSelectedObjects(selection);
-            } else if (selection.contains(mClickedObjectItem->mapObject())) {
+            } else if (selection.contains(mClickedObject)) {
                 // Clicking one of the selected items changes the edit mode
                 if (mMode == Resize) {
                     if (selection.size() > 1 || selection.first()->canRotate())
@@ -689,7 +707,7 @@ void ObjectSelectionTool::mouseReleased(QGraphicsSceneMouseEvent *event)
                 }
             } else {
                 selection.clear();
-                selection.append(mClickedObjectItem->mapObject());
+                selection.append(mClickedObject);
                 setMode(Resize);
                 mapDocument()->setSelectedObjects(selection);
             }
@@ -718,13 +736,23 @@ void ObjectSelectionTool::mouseReleased(QGraphicsSceneMouseEvent *event)
     }
 
     mMousePressed = false;
-    mClickedObjectItem = nullptr;
+    mClickedObject = nullptr;
     mClickedOriginIndicator = nullptr;
     mClickedRotateHandle = nullptr;
     mClickedResizeHandle = nullptr;
 
     updateHover(event->scenePos());
     refreshCursor();
+}
+
+void ObjectSelectionTool::mouseDoubleClicked(QGraphicsSceneMouseEvent *event)
+{
+    mousePressed(event);
+
+    if (mClickedObject && (mClickedObject->shape() == MapObject::Polygon ||
+                           mClickedObject->shape() == MapObject::Polyline)) {
+        toolManager()->selectTool(toolManager()->findTool<EditPolygonTool>());
+    }
 }
 
 void ObjectSelectionTool::modifiersChanged(Qt::KeyboardModifiers modifiers)
@@ -1068,10 +1096,12 @@ void ObjectSelectionTool::updateHover(const QPointF &pos)
         mHoveredHandle = hoveredHandle;
     }
 
-    MapObjectItem *hoveredObjectItem = nullptr;
+    MapObject *hoveredObject = nullptr;
     if (!hoveredHandle)
-        hoveredObjectItem = topMostObjectItemAt(pos);
-    mHoveredObjectItem = hoveredObjectItem;
+        hoveredObject = topMostMapObjectAt(pos);
+    mHoveredObject = hoveredObject;
+
+    mapDocument()->setHoveredMapObject((mAction == NoAction) ? hoveredObject : nullptr);
 }
 
 void ObjectSelectionTool::updateSelection(const QPointF &pos,
@@ -1113,9 +1143,9 @@ void ObjectSelectionTool::startMoving(const QPointF &pos,
                                       Qt::KeyboardModifiers modifiers)
 {
     // Move only the clicked item, if it was not part of the selection
-    if (mClickedObjectItem && !(modifiers & Qt::AltModifier)) {
-        if (!mapDocument()->selectedObjects().contains(mClickedObjectItem->mapObject()))
-            mapDocument()->setSelectedObjects({ mClickedObjectItem->mapObject() });
+    if (mClickedObject && !(modifiers & Qt::AltModifier)) {
+        if (!mapDocument()->selectedObjects().contains(mClickedObject))
+            mapDocument()->setSelectedObjects({ mClickedObject });
     }
 
     saveSelectionState();
@@ -1575,7 +1605,7 @@ void ObjectSelectionTool::refreshCursor()
     case NoAction: {
         const bool hasSelection = !mapDocument()->selectedObjects().isEmpty();
 
-        if ((mHoveredObjectItem || ((mModifiers & Qt::AltModifier) && hasSelection && !mHoveredHandle)) &&
+        if ((mHoveredObject || ((mModifiers & Qt::AltModifier) && hasSelection && !mHoveredHandle)) &&
                 !(mModifiers & Qt::ShiftModifier)) {
             cursorShape = Qt::SizeAllCursor;
         }
