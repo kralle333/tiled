@@ -719,6 +719,10 @@ void PropertyBrowser::addTileLayerProperties()
 
     allowedTilesetsProperty->setAttribute(QLatin1String("enumNames"), getTilesetsOptions());
 
+    //allowedTilesetsProperty->setAttribute()
+
+    //QtVariantProperty *button = addProperty()
+
     addProperty(groupProperty);
 }
 

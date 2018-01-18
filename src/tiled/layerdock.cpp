@@ -342,6 +342,7 @@ void LayerView::contextMenuEvent(QContextMenuEvent *event)
         menu.addSeparator();
         menu.addAction(handler->actionToggleOtherLayers());
         menu.addSeparator();
+        menu.addAction(handler->actionAllowedTilesets());        
         menu.addAction(handler->actionLayerProperties());
     }
 

@@ -185,6 +185,7 @@ TilesetDock::TilesetDock(QWidget *parent)
     , mExportTileset(new QAction(this))
     , mEditTileset(new QAction(this))
     , mDeleteTileset(new QAction(this))
+    , mToggleAllowedTilesets(new QAction(this))
     , mTilesetMenuButton(new TilesetMenuButton(this))
     , mTilesetMenu(new QMenu(this))
     , mTilesetActionGroup(new QActionGroup(this))
@@ -229,18 +230,21 @@ TilesetDock::TilesetDock(QWidget *parent)
     mExportTileset->setIcon(QIcon(QLatin1String(":images/16x16/document-export.png")));
     mEditTileset->setIcon(QIcon(QLatin1String(":images/16x16/document-properties.png")));
     mDeleteTileset->setIcon(QIcon(QLatin1String(":images/16x16/edit-delete.png")));
+    mToggleAllowedTilesets->setIcon(QIcon(QLatin1String(":images/16x16/locked.png")));
 
     Utils::setThemeIcon(mNewTileset, "document-new");
     Utils::setThemeIcon(mEmbedTileset, "document-import");
     Utils::setThemeIcon(mExportTileset, "document-export");
     Utils::setThemeIcon(mEditTileset, "document-properties");
     Utils::setThemeIcon(mDeleteTileset, "edit-delete");
+    Utils::setThemeIcon(mToggleAllowedTilesets, "locked");
 
     connect(mNewTileset, SIGNAL(triggered()), SLOT(newTileset()));
     connect(mEmbedTileset, SIGNAL(triggered()), SLOT(embedTileset()));
     connect(mExportTileset, SIGNAL(triggered()), SLOT(exportTileset()));
     connect(mEditTileset, SIGNAL(triggered()), SLOT(editTileset()));
     connect(mDeleteTileset, SIGNAL(triggered()), SLOT(removeTileset()));
+    connect(mToggleAllowedTilesets, SIGNAL(triggered()), SLOT(removeTileset()));
 
     mToolBar->addAction(mNewTileset);
     mToolBar->setIconSize(Utils::smallIconSize());
@@ -248,6 +252,7 @@ TilesetDock::TilesetDock(QWidget *parent)
     mToolBar->addAction(mExportTileset);
     mToolBar->addAction(mEditTileset);
     mToolBar->addAction(mDeleteTileset);
+    mToolBar->addAction(mToggleAllowedTilesets);
 
     mZoomComboBox = new QComboBox;
     horizontal->addWidget(mZoomComboBox);
@@ -725,6 +730,7 @@ void TilesetDock::retranslateUi()
     mExportTileset->setText(tr("&Export Tileset As..."));
     mEditTileset->setText(tr("Edit Tile&set"));
     mDeleteTileset->setText(tr("&Remove Tileset"));
+    mToggleAllowedTilesets->setText(tr("&Toggle Allowed Tilesets"));
 }
 
 void TilesetDock::onTilesetRowsInserted(const QModelIndex &parent, int first, int last)
@@ -959,6 +965,12 @@ void TilesetDock::embedTileset()
         mTabBar->setCurrentIndex(embeddedTilesetIndex);
 }
 
+void TilesetDock::toggleAllowedTilesets()
+{
+    mOnlyShowAllowedTilesets = !mOnlyShowAllowedTilesets;
+    refreshTilesetMenu();
+}
+
 void TilesetDock::tilesetFileNameChanged(const QString &fileName)
 {
     TilesetDocument *tilesetDocument = static_cast<TilesetDocument*>(sender());
@@ -1005,6 +1017,11 @@ void TilesetDock::refreshTilesetMenu()
     const int currentIndex = mTabBar->currentIndex();
 
     for (int i = 0; i < mTabBar->count(); ++i) {
+        if (mOnlyShowAllowedTilesets)
+        {
+            //if (!mMapDocument->currentLayer()->canUseTileSet(&mTilesets.at(i)))
+              //  continue;            
+        }
         QAction *action = new QAction(mTabBar->tabText(i), this);
         action->setCheckable(true);
 

@@ -28,11 +28,11 @@ SetAllowedTilesetsDialog::SetAllowedTilesetsDialog(QWidget *parent) :
     mUi(new Ui::SetAllowedTilesetsDialog)
 {
     mUi->setupUi(this);
-/*
-    connect(enableTilesetButton, SIGNAL(clicked()), SLOT(enableTilesets()));
-    connect(enableAllTilesetsButton, SIGNAL(clicked()), SLOT(enableAllTilesets()));
-    connect(disableTilesetButton, SIGNAL(clicked()), SLOT(disableTilesets()));
-    connect(disableAllTilesetsButton, SIGNAL(clicked()), SLOT(disableAllTilesets()));*/
+
+    connect(mUi->enableTilesetButton, SIGNAL(clicked()), SLOT(enableTilesets()));
+    connect(mUi->enableAllTilesetsButton, SIGNAL(clicked()), SLOT(enableAllTilesets()));
+    connect(mUi->disableTilesetButton, SIGNAL(clicked()), SLOT(disableTilesets()));
+    connect(mUi->disableAllTilesetsButton, SIGNAL(clicked()), SLOT(disableAllTilesets()));
 }
 SetAllowedTilesetsDialog::~SetAllowedTilesetsDialog()
 {
@@ -40,18 +40,12 @@ SetAllowedTilesetsDialog::~SetAllowedTilesetsDialog()
 }
 void SetAllowedTilesetsDialog::enableTilesets()
 {
-    QVector<QListWidgetItem*> itemsToRemove;
     for (int i = 0; i < mUi->disabledTilesetsList->selectedItems().count(); ++i)
     {
         QListWidgetItem* item = mUi->disabledTilesetsList->selectedItems().at(i);
         mUi->enabledTilesetsList->addItem(item->text());
-        itemsToRemove.append(item);
     }
-
-    for each (QListWidgetItem *item in itemsToRemove)
-    {
-        mUi->disabledTilesetsList->removeItemWidget(item);
-    }
+    qDeleteAll(mUi->disabledTilesetsList->selectedItems());
 }
 void SetAllowedTilesetsDialog::enableAllTilesets()
 {
@@ -60,24 +54,18 @@ void SetAllowedTilesetsDialog::enableAllTilesets()
         QListWidgetItem* item = mUi->disabledTilesetsList->item(i);
         mUi->enabledTilesetsList->addItem(item->text());
     }
-    mUi->disabledTilesetsList->clear();
 }
 
 
 void SetAllowedTilesetsDialog::disableTilesets()
 {
-    QVector<QListWidgetItem*> itemsToRemove;
     for (int i = 0; i < mUi->enabledTilesetsList->selectedItems().count(); ++i)
     {
         QListWidgetItem* item = mUi->enabledTilesetsList->selectedItems().at(i);
         mUi->disabledTilesetsList->addItem(item->text());
-        itemsToRemove.append(item);
     }
 
-    for each (QListWidgetItem *item in itemsToRemove)
-    {
-        mUi->enabledTilesetsList->removeItemWidget(item);
-    }
+    qDeleteAll(mUi->enabledTilesetsList->selectedItems());
 }
 void SetAllowedTilesetsDialog::disableAllTilesets()
 {

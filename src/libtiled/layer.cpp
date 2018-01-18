@@ -233,6 +233,11 @@ Layer *LayerIterator::next()
     return layer;
 }
 
+bool Layer::canUseTileSet(const SharedTileset *tileset) const
+{
+    return  mAllowedTilesets.contains(tileset);
+}
+
 Layer *LayerIterator::previous()
 {
     Layer *layer = mCurrentLayer;

@@ -83,6 +83,7 @@ public:
     QAction *actionMoveLayerUp() const { return mActionMoveLayerUp; }
     QAction *actionMoveLayerDown() const { return mActionMoveLayerDown; }
     QAction *actionToggleOtherLayers() const { return mActionToggleOtherLayers; }
+    QAction *actionAllowedTilesets() const { return mActionTilesetsAllowed; }
     QAction *actionLayerProperties() const { return mActionLayerProperties; }
 
     QAction *actionDuplicateObjects() const { return mActionDuplicateObjects; }
@@ -126,6 +127,7 @@ public slots:
     void moveLayerDown();
     void removeLayer();
     void toggleOtherLayers();
+    void tilesetsAllowed();
     void layerProperties();
 
     void duplicateObjects();
@@ -163,6 +165,7 @@ private:
     QAction *mActionMoveLayerUp;
     QAction *mActionMoveLayerDown;
     QAction *mActionToggleOtherLayers;
+    QAction *mActionTilesetsAllowed;
     QAction *mActionLayerProperties;
 
     QAction *mActionDuplicateObjects;

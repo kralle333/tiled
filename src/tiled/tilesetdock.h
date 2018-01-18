@@ -130,6 +130,7 @@ private slots:
     void editTileset();
     void embedTileset();
     void exportTileset();
+    void toggleAllowedTilesets();
 
     void refreshTilesetMenu();
 
@@ -178,6 +179,7 @@ private:
     QAction *mExportTileset;
     QAction *mEditTileset;
     QAction *mDeleteTileset;
+    QAction *mToggleAllowedTilesets;
 
     QToolButton *mTilesetMenuButton;
     QMenu *mTilesetMenu; //opens on click of mTilesetMenu
@@ -188,6 +190,7 @@ private:
 
     bool mEmittingStampCaptured;
     bool mSynchronizingSelection;
+    bool mOnlyShowAllowedTilesets;
 };
 
 } // namespace Internal
