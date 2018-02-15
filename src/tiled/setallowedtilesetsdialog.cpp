@@ -1,3 +1,4 @@
+#include "setallowedtilesetsdialog.h"
 /*
  * setallowedtilesetsdialog.cpp
  * Copyright 2008-2009, Thorbjørn Lindeijer <thorbjorn@lindeijer.nl>
@@ -46,6 +47,7 @@ void SetAllowedTilesetsDialog::enableTilesets()
         mUi->enabledTilesetsList->addItem(item->text());
     }
     qDeleteAll(mUi->disabledTilesetsList->selectedItems());
+    mWasListChanged = true;
 }
 void SetAllowedTilesetsDialog::enableAllTilesets()
 {
@@ -54,6 +56,7 @@ void SetAllowedTilesetsDialog::enableAllTilesets()
         QListWidgetItem* item = mUi->disabledTilesetsList->item(i);
         mUi->enabledTilesetsList->addItem(item->text());
     }
+    mWasListChanged = true;
 }
 
 
@@ -64,8 +67,8 @@ void SetAllowedTilesetsDialog::disableTilesets()
         QListWidgetItem* item = mUi->enabledTilesetsList->selectedItems().at(i);
         mUi->disabledTilesetsList->addItem(item->text());
     }
-
     qDeleteAll(mUi->enabledTilesetsList->selectedItems());
+    mWasListChanged = true;
 }
 void SetAllowedTilesetsDialog::disableAllTilesets()
 {
@@ -75,6 +78,12 @@ void SetAllowedTilesetsDialog::disableAllTilesets()
         mUi->disabledTilesetsList->addItem(item->text());
     }
     mUi->enabledTilesetsList->clear();
+    mWasListChanged = true;
+}
+
+bool SetAllowedTilesetsDialog::wasListChanged() const
+{
+    return mWasListChanged;
 }
 
 QVector<QString> SetAllowedTilesetsDialog::getAllowedTilesets()
@@ -84,13 +93,14 @@ QVector<QString> SetAllowedTilesetsDialog::getAllowedTilesets()
     for (int i = 0; i < mUi->enabledTilesetsList->count(); ++i)
     {
         QListWidgetItem* item = mUi->enabledTilesetsList->item(i);
+        QString str = item->text();
         allowedTilesets.append(item->text());
     }
 
     return allowedTilesets;
 }
 
-void SetAllowedTilesetsDialog::populateTilesetLists(const QVector<Tiled::SharedTileset> allTilesets, const QVector<Tiled::SharedTileset> tilesetsLockedToLayer)
+void SetAllowedTilesetsDialog::populateTilesetLists(const QVector<Tiled::SharedTileset> &allTilesets, const QVector < Tiled::SharedTileset > &tilesetsLockedToLayer)
 {
     for each (SharedTileset tileset in tilesetsLockedToLayer)
     {
@@ -100,7 +110,7 @@ void SetAllowedTilesetsDialog::populateTilesetLists(const QVector<Tiled::SharedT
     {
         if (!tilesetsLockedToLayer.contains(tileset))
         {
-            mUi->enabledTilesetsList->addItem(tileset->name());
+            mUi->disabledTilesetsList->addItem(tileset->name());
         }
     }
 }

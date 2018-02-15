@@ -62,10 +62,10 @@ class MapReaderPrivate
 {
     Q_DECLARE_TR_FUNCTIONS(MapReader)
 
-    friend class Tiled::MapReader;
+        friend class Tiled::MapReader;
 
 public:
-    explicit MapReaderPrivate(MapReader *mapReader):
+    explicit MapReaderPrivate(MapReader *mapReader) :
         p(mapReader),
         mReadingExternalTileset(false)
     {}
@@ -109,14 +109,14 @@ private:
                             QStringRef text,
                             QRect bounds);
 
-    /**
-     * Returns the cell for the given global tile ID. Errors are raised with
-     * the QXmlStreamReader.
-     *
-     * @param gid the global tile ID
-     * @return the cell data associated with the given global tile ID, or an
-     *         empty cell if not found
-     */
+                    /**
+                     * Returns the cell for the given global tile ID. Errors are raised with
+                     * the QXmlStreamReader.
+                     *
+                     * @param gid the global tile ID
+                     * @return the cell data associated with the given global tile ID, or an
+                     *         empty cell if not found
+                     */
     Cell cellForGid(unsigned gid);
 
     ImageLayer *readImageLayer();
@@ -124,6 +124,7 @@ private:
 
     ObjectGroup *readObjectGroup();
     MapObject *readObject();
+    QVector<SharedTileset> readAllowedTileset();
     QPolygonF readPolygon();
     TextData readObjectText();
 
@@ -206,9 +207,9 @@ QString MapReaderPrivate::errorString() const
         return mError;
     } else {
         return tr("%3\n\nLine %1, column %2")
-                .arg(xml.lineNumber())
-                .arg(xml.columnNumber())
-                .arg(xml.errorString());
+            .arg(xml.lineNumber())
+            .arg(xml.columnNumber())
+            .arg(xml.errorString());
     }
 }
 
@@ -228,8 +229,8 @@ bool MapReaderPrivate::openFile(QFile *file)
 void MapReaderPrivate::readUnknownElement()
 {
     qDebug().nospace() << "Unknown element (fixme): " << xml.name()
-                       << " at line " << xml.lineNumber()
-                       << ", column " << xml.columnNumber();
+        << " at line " << xml.lineNumber()
+        << ", column " << xml.columnNumber();
     xml.skipCurrentElement();
 }
 
@@ -246,9 +247,9 @@ Map *MapReaderPrivate::readMap()
     const int hexSideLength = atts.value(QLatin1String("hexsidelength")).toInt();
 
     const QString orientationString =
-            atts.value(QLatin1String("orientation")).toString();
+        atts.value(QLatin1String("orientation")).toString();
     const Map::Orientation orientation =
-            orientationFromString(orientationString);
+        orientationFromString(orientationString);
 
     if (orientation == Map::Unknown) {
         xml.raiseError(tr("Unsupported map orientation: \"%1\"")
@@ -256,22 +257,22 @@ Map *MapReaderPrivate::readMap()
     }
 
     const QString staggerAxisString =
-            atts.value(QLatin1String("staggeraxis")).toString();
+        atts.value(QLatin1String("staggeraxis")).toString();
     const Map::StaggerAxis staggerAxis =
-            staggerAxisFromString(staggerAxisString);
+        staggerAxisFromString(staggerAxisString);
 
     const QString staggerIndexString =
-            atts.value(QLatin1String("staggerindex")).toString();
+        atts.value(QLatin1String("staggerindex")).toString();
     const Map::StaggerIndex staggerIndex =
-            staggerIndexFromString(staggerIndexString);
+        staggerIndexFromString(staggerIndexString);
 
     const QString renderOrderString =
-            atts.value(QLatin1String("renderorder")).toString();
+        atts.value(QLatin1String("renderorder")).toString();
     const Map::RenderOrder renderOrder =
-            renderOrderFromString(renderOrderString);
+        renderOrderFromString(renderOrderString);
 
     const int nextObjectId =
-            atts.value(QLatin1String("nextobjectid")).toInt();
+        atts.value(QLatin1String("nextobjectid")).toInt();
 
     mMap.reset(new Map(orientation, mapWidth, mapHeight, tileWidth, tileHeight, infinite));
     mMap->setHexSideLength(hexSideLength);
@@ -300,11 +301,27 @@ Map *MapReaderPrivate::readMap()
     if (xml.hasError()) {
         mMap.reset();
     } else {
-        // Try to load the tileset images for embedded tilesets
+     // Try to load the tileset images for embedded tilesets
         auto tilesets = mMap->tilesets();
         for (SharedTileset &tileset : tilesets) {
             if (!tileset->isCollection() && tileset->fileName().isEmpty())
                 tileset->loadImage();
+        }
+
+        //Link temporarily set allowed tilesets with actual loaded tilesets
+        for each (Layer *layer in mMap->layers()) {
+            if (layer->isTileLayer() || layer->isGroupLayer()) {
+                QVector<SharedTileset> newTilesets;
+                for (SharedTileset &tileset : tilesets) {
+                    for each (SharedTileset tempTileset in layer->getAllowedTilesets()) {
+                        if (tileset->fileName() == tempTileset->fileName()) {
+                            newTilesets.append(tileset);
+                        }
+                    }
+                }
+                //Clears all temp tilesets and adds actual tilesets to the list of allowed tilesets
+                layer->setAllowedTilesets(newTilesets);
+            }
         }
 
         // Fix up sizes of tile objects. This is for backwards compatibility.
@@ -334,7 +351,7 @@ SharedTileset MapReaderPrivate::readTileset()
     const QXmlStreamAttributes atts = xml.attributes();
     const QString source = atts.value(QLatin1String("source")).toString();
     const unsigned firstGid =
-            atts.value(QLatin1String("firstgid")).toUInt();
+        atts.value(QLatin1String("firstgid")).toUInt();
 
     SharedTileset tileset;
 
@@ -354,7 +371,6 @@ SharedTileset MapReaderPrivate::readTileset()
         } else {
             tileset = Tileset::create(name, tileWidth, tileHeight,
                                       tileSpacing, margin);
-
             tileset->setColumnCount(columns);
 
             if (!bgColorString.isEmpty())
@@ -708,7 +724,6 @@ static void readLayerAttributes(Layer &layer,
                          atts.value(QLatin1String("offsety")).toDouble());
 
     layer.setOffset(offset);
-    layer.setAllowedTileSet(atts.value(QLatin1String("allowedtileset")).toString());
 }
 
 TileLayer *MapReaderPrivate::readTileLayer()
@@ -730,6 +745,8 @@ TileLayer *MapReaderPrivate::readTileLayer()
             tileLayer->mergeProperties(readProperties());
         else if (xml.name() == QLatin1String("data"))
             readTileLayerData(*tileLayer);
+        else if (xml.name() == QLatin1String("allowedtilesets"))
+            tileLayer->setAllowedTilesets(readAllowedTileset());
         else
             readUnknownElement();
     }
@@ -883,8 +900,8 @@ void MapReaderPrivate::decodeCSVLayerData(TileLayer &tileLayer,
 
             if (!conversionOk) {
                 xml.raiseError(
-                        tr("Unable to parse tile at (%1,%2) on layer '%3'")
-                               .arg(x + 1).arg(y + 1).arg(tileLayer.name()));
+                    tr("Unable to parse tile at (%1,%2) on layer '%3'")
+                    .arg(x + 1).arg(y + 1).arg(tileLayer.name()));
                 return;
             }
 
@@ -938,6 +955,8 @@ ObjectGroup *MapReaderPrivate::readObjectGroup()
     while (xml.readNextStartElement()) {
         if (xml.name() == QLatin1String("object"))
             objectGroup->addObject(readObject());
+        else if (xml.name() == QLatin1String("allowedtilesets"))
+            objectGroup->setAllowedTilesets(readAllowedTileset());
         else if (xml.name() == QLatin1String("properties"))
             objectGroup->mergeProperties(readProperties());
         else
@@ -1079,6 +1098,28 @@ MapObject *MapReaderPrivate::readObject()
     object->syncWithTemplate();
 
     return object;
+}
+
+
+QVector<SharedTileset> MapReaderPrivate::readAllowedTileset()
+{
+    Q_ASSERT(xml.isStartElement() && (xml.name() == QLatin1String("allowedtilesets")));
+
+    QVector<SharedTileset> allowedTilesets;
+    while (xml.readNextStartElement()) {
+        if (xml.name() == QLatin1String("tileset")) {
+            auto atts = xml.attributes();
+            QString name = atts.value(QLatin1String("name")).toString();
+            QString fileName = atts.value(QLatin1String("source")).toString();
+            fileName = p->resolveReference(fileName, mPath);
+            SharedTileset tileset = Tileset::create(name, 0, 0);
+            tileset->setFileName(fileName);
+            allowedTilesets.append(tileset);
+            xml.readNext();
+        }
+
+    }
+    return allowedTilesets;
 }
 
 QPolygonF MapReaderPrivate::readPolygon()

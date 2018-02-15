@@ -623,14 +623,15 @@ void MapDocumentActionHandler::tilesetsAllowed()
     dialog->populateTilesetLists(mMapDocument->map()->tilesets(), mMapDocument->currentLayer()->getAllowedTilesets());
 
     int result = dialog->exec();
-    if (result == QMessageBox::Ok && dialog->wasListChanged())
+    if (result == QMessageBox::Accepted && dialog->wasListChanged())
     {
         QVector<SharedTileset> newAllowedTilesets;
         for each (QString tilesetName in dialog->getAllowedTilesets())
         {
             for each (SharedTileset tileset in mMapDocument->map()->tilesets())
             {
-                if (QString::compare(tilesetName, tileset->name()))
+                //TODO: Multiple tilesets might have the same name, do a check with absolute path instead or address.
+                if (tilesetName == tileset->name())
                 {
                     newAllowedTilesets.append(tileset);
                     break;
@@ -638,6 +639,7 @@ void MapDocumentActionHandler::tilesetsAllowed()
             }
         }
         mMapDocument->currentLayer()->setAllowedTilesets(newAllowedTilesets);
+        emit allowedTilesetsChangedForCurrentLayer();
     }
 
 }

@@ -74,14 +74,6 @@ void SetLayerLocked::swap()
     mLocked = previousLocked;
 }
 
-SetLayerAllowedTileSet::SetLayerAllowedTileSet(MapDocument *mapDocument,
-    Layer *layer,
-    QString allowedTileSet)
-    : mMapDocument(mapDocument)
-    , mLayer(layer)
-{
-    mMapDocument->layerModel()->setLayerAllowedTileSet(mLayer, allowedTileSet);
-}
 
 SetLayerOpacity::SetLayerOpacity(MapDocument *mapDocument,
                                  Layer *layer,

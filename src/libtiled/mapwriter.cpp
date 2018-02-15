@@ -102,6 +102,8 @@ private:
     void writeProperties(QXmlStreamWriter &w,
                          const Properties &properties);
 
+    void writeAllowedTilesets(QXmlStreamWriter & w, const Layer & layer);
+
     QDir mMapDir;     // The directory in which the map is being saved
     GidMapper mGidMapper;
     bool mUseAbsolutePaths;
@@ -263,7 +265,7 @@ void MapWriterPrivate::writeMap(QXmlStreamWriter &w, const Map &map)
 static QString makeTerrainAttribute(const Tile *tile)
 {
     QString terrain;
-    for (int i = 0; i < 4; ++i ) {
+    for (int i = 0; i < 4; ++i) {
         if (i > 0)
             terrain += QLatin1String(",");
         int t = tile->cornerTerrainId(i);
@@ -559,8 +561,8 @@ void MapWriterPrivate::writeTileLayer(QXmlStreamWriter &w,
     QString compression;
 
     if (mLayerDataFormat == Map::Base64
-            || mLayerDataFormat == Map::Base64Gzip
-            || mLayerDataFormat == Map::Base64Zlib) {
+        || mLayerDataFormat == Map::Base64Gzip
+        || mLayerDataFormat == Map::Base64Zlib) {
 
         encoding = QLatin1String("base64");
 
@@ -594,8 +596,9 @@ void MapWriterPrivate::writeTileLayer(QXmlStreamWriter &w,
         writeTileLayerData(w, tileLayer,
                            QRect(0, 0, tileLayer.width(), tileLayer.height()));
     }
-
     w.writeEndElement(); // </data>
+
+    writeAllowedTilesets(w, tileLayer);
     w.writeEndElement(); // </layer>
 }
 
@@ -677,9 +680,6 @@ void MapWriterPrivate::writeLayerAttributes(QXmlStreamWriter &w,
         w.writeAttribute(QLatin1String("offsetx"), QString::number(offset.x()));
         w.writeAttribute(QLatin1String("offsety"), QString::number(offset.y()));
     }
-
-    if (layer.allowedTileSet() != QLatin1String("All"))
-        w.writeAttribute(QLatin1String("allowedtileset"), layer.allowedTileSet());
 }
 
 void MapWriterPrivate::writeObjectGroup(QXmlStreamWriter &w,
@@ -698,9 +698,10 @@ void MapWriterPrivate::writeObjectGroup(QXmlStreamWriter &w,
 
     writeLayerAttributes(w, objectGroup);
     writeProperties(w, objectGroup.properties());
-
     for (const MapObject *mapObject : objectGroup.objects())
         writeObject(w, *mapObject);
+
+    writeAllowedTilesets(w, objectGroup);
 
     w.writeEndElement();
 }
@@ -864,7 +865,7 @@ void MapWriterPrivate::writeImageLayer(QXmlStreamWriter &w,
         w.writeStartElement(QLatin1String("image"));
 
         QString source = mUseAbsolutePaths ? imageSource.toString(QUrl::PreferLocalFile)
-                                           : toFileReference(imageSource, mMapDir);
+            : toFileReference(imageSource, mMapDir);
 
         w.writeAttribute(QLatin1String("source"), source);
 
@@ -920,7 +921,7 @@ void MapWriterPrivate::writeProperties(QXmlStreamWriter &w,
             w.writeAttribute(QLatin1String("type"), typeName);
 
         QVariant exportValue = mUseAbsolutePaths ? toExportValue(it.value())
-                                                 : toExportValue(it.value(), mMapDir);
+            : toExportValue(it.value(), mMapDir);
         QString value = exportValue.toString();
 
         if (value.contains(QLatin1Char('\n')))
@@ -934,6 +935,21 @@ void MapWriterPrivate::writeProperties(QXmlStreamWriter &w,
     w.writeEndElement();
 }
 
+void MapWriterPrivate::writeAllowedTilesets(QXmlStreamWriter &w,
+                                            const Layer &layer)
+{
+    if (layer.getAllowedTilesets().length() > 0) {
+        w.writeStartElement(QLatin1String("allowedtilesets"));
+        for each (SharedTileset tileset in layer.getAllowedTilesets()) {
+            w.writeStartElement(QLatin1String("tileset"));
+            w.writeAttribute(QLatin1String("name"), tileset->name());
+            QString source = mMapDir.relativeFilePath(tileset->fileName());
+            w.writeAttribute(QLatin1String("source"), source);
+            w.writeEndElement();
+        }
+        w.writeEndElement();
+    }
+}
 
 MapWriter::MapWriter()
     : d(new MapWriterPrivate)

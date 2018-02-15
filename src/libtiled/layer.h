@@ -51,6 +51,7 @@ class TileLayer;
  */
 class TILEDSHARED_EXPORT Layer : public Object
 {
+
 public:
     enum TypeFlag {
         TileLayerType   = 0x01,
@@ -187,33 +188,15 @@ public:
     virtual void replaceReferencesToTileset(Tileset *oldTileset,
                                             Tileset *newTileset) = 0;
 
-    inline bool canUseTileSet(const SharedTileset *tileset) const;
+    bool canUseTileSet(const SharedTileset tileset) const;
 
-    inline const QString allowedTileSet() const
-    {
-        return mAllowedTileSet;
-    }
     inline const QVector<SharedTileset> getAllowedTilesets() const
     {
         return mAllowedTilesets;
     }
-    inline void addAllowedTileset(Tiled::Tileset newTileset)
-    {
 
-    }
-    inline void removeAllowedTileset(Tiled::Tileset tilesetToRemove)
-    {
-
-    }
-    inline void setAllowedTileSet(QString tileSetName)
-    {
-        mAllowedTileSet = tileSetName;
-    }
-    inline void setAllowedTilesets(QVector<Tiled::SharedTileset> tilesets)
-    {
-        mAllowedTilesets.clear();
-        mAllowedTilesets.append(tilesets);
-    }
+    void addAllowedTileset(const Tiled::SharedTileset tileset);
+    void setAllowedTilesets(const QVector<Tiled::SharedTileset> tilesets);
     
     /**
      * Returns whether this layer can merge together with the \a other layer.
@@ -268,8 +251,7 @@ protected:
     Map *mMap;
     GroupLayer *mParentLayer;
     bool mLocked;
-    QString mAllowedTileSet;
-    QVector<SharedTileset*> mAllowedTilesets;
+    QVector<SharedTileset> mAllowedTilesets;
 
     friend class Map;
     friend class GroupLayer;

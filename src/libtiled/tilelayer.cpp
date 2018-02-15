@@ -504,7 +504,6 @@ void TileLayer::rotateHexagonal(RotateDirection direction, Map *map)
     resize(filledRect.size(), -filledRect.topLeft());
 }
 
-
 QSet<SharedTileset> TileLayer::usedTilesets() const
 {
     if (mUsedTilesetsDirty) {

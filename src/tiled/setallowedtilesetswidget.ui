@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>SetAllowedTilesetsDialog</class>
- <widget class="QDialog" name="SetAllowedTilesetsDialog">
+ <widget class="QWidget" name="SetAllowedTilesetsDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -89,38 +89,5 @@
   </layout>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>SetAllowedTilesetsDialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>209</x>
-     <y>351</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>209</x>
-     <y>185</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>SetAllowedTilesetsDialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>209</x>
-     <y>351</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>209</x>
-     <y>185</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

@@ -35,6 +35,8 @@
 #include "objectgroup.h"
 #include "tilelayer.h"
 
+#include <QDebug>
+
 namespace Tiled {
 
 Layer::Layer(TypeFlag type, const QString &name, int x, int y) :
@@ -202,7 +204,7 @@ Layer *LayerIterator::next()
             return nullptr;
         }
     } else {
-        // Traverse to next sibling
+     // Traverse to next sibling
         ++index;
     }
 
@@ -232,10 +234,27 @@ Layer *LayerIterator::next()
 
     return layer;
 }
-
-bool Layer::canUseTileSet(const SharedTileset *tileset) const
+bool Layer::canUseTileSet(const SharedTileset tileset) const
 {
-    return  mAllowedTilesets.contains(tileset);
+    if (mAllowedTilesets.length() == 0)
+        return true;
+
+    for (auto i = mAllowedTilesets.constBegin(); i != mAllowedTilesets.constEnd(); i++) {
+        if ((*i)->fileName() == tileset->fileName()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Layer::addAllowedTileset(const Tiled::SharedTileset tileset)
+{
+    mAllowedTilesets.append(tileset);
+}
+void Layer::setAllowedTilesets(const QVector<Tiled::SharedTileset> tilesets)
+{
+    mAllowedTilesets.clear();
+    mAllowedTilesets.append(tilesets);
 }
 
 Layer *LayerIterator::previous()
@@ -251,7 +270,7 @@ Layer *LayerIterator::previous()
             return nullptr;
         }
     } else {
-        // Traverse down to last child if applicable
+     // Traverse down to last child if applicable
         if (layer->isGroupLayer()) {
             auto groupLayer = static_cast<GroupLayer*>(layer);
             if (groupLayer->layerCount() > 0) {

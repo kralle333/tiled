@@ -95,7 +95,7 @@ public:
 
     MapFormat *readerFormat() const;
     void setReaderFormat(MapFormat *format);
-
+    
     FileFormat *writerFormat() const override;
     void setWriterFormat(MapFormat *format);
 

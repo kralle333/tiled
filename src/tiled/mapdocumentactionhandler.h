@@ -94,6 +94,7 @@ public:
 
 signals:
     void mapDocumentChanged(MapDocument *mapDocument);
+    void allowedTilesetsChangedForCurrentLayer();
 
 public slots:
     void cut();

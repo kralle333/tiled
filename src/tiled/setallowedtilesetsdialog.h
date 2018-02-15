@@ -40,9 +40,9 @@ public:
     SetAllowedTilesetsDialog(QWidget *parent = nullptr);
     ~SetAllowedTilesetsDialog();
 
-    inline bool wasListChanged() { return mWasListChanged; }
+    bool wasListChanged() const;
     QVector<QString> getAllowedTilesets();
-    void populateTilesetLists(const QVector<SharedTileset> allTileSets, const QVector<SharedTileset> tilesetsLockedToLayer);
+    void populateTilesetLists(const QVector<SharedTileset> &allTileSets, const QVector<SharedTileset> &tilesetsLockedToLayer);
 
 private slots:
     void enableTilesets();

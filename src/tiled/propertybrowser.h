@@ -125,7 +125,6 @@ private:
         RotationProperty,
         VisibleProperty,
         LockedProperty,
-        AllowedTileSetsProperty,
         OpacityProperty,
         TextProperty,
         TextAlignmentProperty,

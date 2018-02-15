@@ -46,6 +46,7 @@ class Terrain;
 class Tile;
 class TileLayer;
 class Tileset;
+class Layer;
 
 namespace Internal {
 
@@ -134,6 +135,7 @@ private slots:
 
     void refreshTilesetMenu();
 
+    void onCurrentLayerChanged(Layer *layer);
     void swapTiles(Tile *tileA, Tile *tileB);
 
 private:
@@ -146,7 +148,6 @@ private:
     void onTilesetRowsMoved(const QModelIndex &parent, int start, int end, const QModelIndex &destination, int row);
     void onTilesetLayoutChanged(const QList<QPersistentModelIndex> &parents, QAbstractItemModel::LayoutChangeHint hint);
     void onTilesetDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
-
     void onTabMoved(int from, int to);
     void tabContextMenuRequested(const QPoint &pos);
 
@@ -190,7 +191,7 @@ private:
 
     bool mEmittingStampCaptured;
     bool mSynchronizingSelection;
-    bool mOnlyShowAllowedTilesets;
+    bool mOnlyShowAllowedTilesets = false;
 };
 
 } // namespace Internal
