@@ -77,21 +77,6 @@ private:
 
 
 /**
- * Used for changing allowed tilesets for layer.
- */
-class SetLayerAllowedTileSet : public QUndoCommand
-{
-public:
-    SetLayerAllowedTileSet(MapDocument *mapDocument,
-        Layer *layer,
-        QString allowedTileSets);
-
-private:
-    MapDocument *mMapDocument;
-    Layer *mLayer;
-};
-
-/**
  * Used for changing layer opacity.
  */
 class SetLayerOpacity : public QUndoCommand

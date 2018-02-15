@@ -54,6 +54,7 @@ public:
                     Qt::KeyboardModifiers modifiers) override;
     void mousePressed(QGraphicsSceneMouseEvent *event) override;
     void mouseReleased(QGraphicsSceneMouseEvent *event) override;
+    void mouseDoubleClicked(QGraphicsSceneMouseEvent *event) override;
     void modifiersChanged(Qt::KeyboardModifiers modifiers) override;
 
     void languageChanged() override;
@@ -79,27 +80,42 @@ private:
         Moving
     };
 
-    void updateHover(const QPointF &pos);
+    void updateHover(const QPointF &scenePos, QGraphicsSceneMouseEvent *event = nullptr);
 
     void setSelectedHandles(const QSet<PointHandle*> &handles);
     void setSelectedHandle(PointHandle *handle)
     { setSelectedHandles(QSet<PointHandle*>() << handle); }
 
+    void setHighlightedHandles(const QSet<PointHandle*> &handles);
+
     void updateSelection(QGraphicsSceneMouseEvent *event);
 
     void startSelecting();
 
-    void startMoving(const QPointF &pos, Qt::KeyboardModifiers modifiers);
+    void startMoving(const QPointF &pos);
     void updateMovingItems(const QPointF &pos,
                            Qt::KeyboardModifiers modifiers);
     void finishMoving(const QPointF &pos);
 
-    void showHandleContextMenu(PointHandle *clickedHandle, QPoint screenPos);
+    void showHandleContextMenu(QPoint screenPos);
+
+    QSet<PointHandle*> clickedHandles() const;
+
+    struct InteractedSegment {
+        MapObject *object = nullptr;
+        int index = 0;
+        QPointF nearestPointOnLine;
+
+        explicit operator bool() const { return object != nullptr; }
+        void clear() { object = nullptr; }
+    };
 
     SelectionRectangle *mSelectionRectangle;
     bool mMousePressed;
     PointHandle *mHoveredHandle;
+    InteractedSegment mHoveredSegment;
     PointHandle *mClickedHandle;
+    InteractedSegment mClickedSegment;
     MapObject *mClickedObject;
     QVector<QPointF> mOldHandlePositions;
     QMap<MapObject*, QPolygonF> mOldPolygons;
@@ -112,6 +128,7 @@ private:
     /// The list of handles associated with each selected map object
     QMap<MapObject*, QList<PointHandle*> > mHandles;
     QSet<PointHandle*> mSelectedHandles;
+    QSet<PointHandle*> mHighlightedHandles;
 };
 
 } // namespace Internal

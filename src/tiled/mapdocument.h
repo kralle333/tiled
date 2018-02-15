@@ -95,7 +95,7 @@ public:
 
     MapFormat *readerFormat() const;
     void setReaderFormat(MapFormat *format);
-
+    
     FileFormat *writerFormat() const override;
     void setWriterFormat(MapFormat *format);
 
@@ -118,6 +118,9 @@ public:
      */
     Layer *currentLayer() const { return mCurrentLayer; }
     void setCurrentLayer(Layer *layer);
+
+    const QList<Layer*> &selectedLayers() const { return mSelectedLayers; }
+    void setSelectedLayers(const QList<Layer*> &layers);
 
     /**
      * Resize this map to the given \a size, while at the same time shifting
@@ -153,6 +156,10 @@ public:
     void insertTileset(int index, const SharedTileset &tileset);
     void removeTilesetAt(int index);
     SharedTileset replaceTileset(int index, const SharedTileset &tileset);
+
+    void paintTileLayers(const Map *map, bool mergeable = false,
+                         QVector<SharedTileset> *missingTilesets = nullptr,
+                         QHash<TileLayer *, QRegion> *paintedRegions = nullptr);
 
     void replaceObjectTemplate(const ObjectTemplate *oldObjectTemplate,
                                const ObjectTemplate *newObjectTemplate);
@@ -223,6 +230,11 @@ signals:
      */
     void selectedAreaChanged(const QRegion &newSelection,
                              const QRegion &oldSelection);
+
+    /**
+     * Emitted when the list of selected layers changes.
+     */
+    void selectedLayersChanged();
 
     /**
      * Emitted when the list of selected objects changes.
@@ -331,6 +343,7 @@ private:
     Map *mMap;
     LayerModel *mLayerModel;
     QRegion mSelectedArea;
+    QList<Layer*> mSelectedLayers;
     QList<MapObject*> mSelectedObjects;
     MapObject *mHoveredMapObject;       /**< Map object with mouse on top. */
     MapRenderer *mRenderer;

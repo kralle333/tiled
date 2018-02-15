@@ -51,6 +51,7 @@ class TileLayer;
  */
 class TILEDSHARED_EXPORT Layer : public Object
 {
+
 public:
     enum TypeFlag {
         TileLayerType   = 0x01,
@@ -187,20 +188,16 @@ public:
     virtual void replaceReferencesToTileset(Tileset *oldTileset,
                                             Tileset *newTileset) = 0;
 
-    inline bool canUseTileSet(const Tileset *tileset) const
-    {
-        return  mAllowedTileSet.isEmpty() || QString::compare(tileset->name(), mAllowedTileSet) == 0;
-    }
+    bool canUseTileSet(const SharedTileset tileset) const;
 
-    inline const QString allowedTileSet() const
+    inline const QVector<SharedTileset> getAllowedTilesets() const
     {
-        return mAllowedTileSet;
+        return mAllowedTilesets;
     }
-    inline void setAllowedTileSet(QString tileSetName)
-    {
-        mAllowedTileSet = tileSetName;
-    }
-
+    void removeAllowedTileset(Tiled::SharedTileset tileset);
+    void addAllowedTileset(const Tiled::SharedTileset tileset);
+    void setAllowedTilesets(const QVector<Tiled::SharedTileset> tilesets);
+    
     /**
      * Returns whether this layer can merge together with the \a other layer.
      */
@@ -254,7 +251,7 @@ protected:
     Map *mMap;
     GroupLayer *mParentLayer;
     bool mLocked;
-    QString mAllowedTileSet;
+    QVector<SharedTileset> mAllowedTilesets;
 
     friend class Map;
     friend class GroupLayer;
@@ -279,8 +276,9 @@ inline QPointF Layer::offset() const
 
 
 /**
- * An iterator for iterating over the layers of a map. When iterating forward,
- * group layers are traversed after their children.
+ * An iterator for iterating over the layers of a map, in the order in which
+ * they are drawn. When iterating forward, group layers are traversed after
+ * their children.
  *
  * Modifying the layer hierarchy while an iterator is active will lead to
  * undefined results!
@@ -288,7 +286,7 @@ inline QPointF Layer::offset() const
 class TILEDSHARED_EXPORT LayerIterator
 {
 public:
-    LayerIterator(const Map *map);
+    LayerIterator(const Map *map, int layerTypes = Layer::AnyLayerType);
     LayerIterator(Layer *start);
 
     Layer *currentLayer() const;
@@ -308,16 +306,18 @@ private:
     const Map *mMap;
     Layer *mCurrentLayer;
     int mSiblingIndex;
+    int mLayerTypes;
 };
 
 
 /**
  * Iterate the given map, starting from the first layer.
  */
-inline LayerIterator::LayerIterator(const Map *map)
+inline LayerIterator::LayerIterator(const Map *map, int layerTypes)
     : mMap(map)
     , mCurrentLayer(nullptr)
     , mSiblingIndex(-1)
+    , mLayerTypes(layerTypes)
 {}
 
 /**
@@ -327,6 +327,7 @@ inline LayerIterator::LayerIterator(Layer *start)
     : mMap(start ? start->map() : nullptr)
     , mCurrentLayer(start)
     , mSiblingIndex(start ? start->siblingIndex() : -1)
+    , mLayerTypes(Layer::AnyLayerType)
 {}
 
 inline Layer *LayerIterator::currentLayer() const

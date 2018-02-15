@@ -35,6 +35,8 @@
 #include "objectgroup.h"
 #include "tilelayer.h"
 
+#include <QDebug>
+
 namespace Tiled {
 
 Layer::Layer(TypeFlag type, const QString &name, int x, int y) :
@@ -193,44 +195,72 @@ Layer *LayerIterator::next()
     Layer *layer = mCurrentLayer;
     int index = mSiblingIndex;
 
-    if (!layer) {
-        // Traverse to the first layer of the map
-        if (mMap && index == -1 && mMap->layerCount() > 0) {
-            layer = mMap->layerAt(0);
-            index = 0;
-        } else {
-            return nullptr;
-        }
-    } else {
-        // Traverse to next sibling
-        ++index;
-    }
-
-    const auto siblings = layer->siblings();
-
-    // Traverse to parent layer if last child
-    if (index == siblings.size()) {
-        layer = layer->parentLayer();
-        index = layer ? layer->siblingIndex() : -1;
-    } else {
-        layer = siblings.at(index);
-
-        // If next layer is a group, traverse to its first child
-        while (layer->isGroupLayer()) {
-            auto groupLayer = static_cast<GroupLayer*>(layer);
-            if (groupLayer->layerCount() > 0) {
+    do {
+        if (!layer) {
+            // Traverse to the first layer of the map
+            if (mMap && index == -1 && mMap->layerCount() > 0) {
+                layer = mMap->layerAt(0);
                 index = 0;
-                layer = groupLayer->layerAt(0);
             } else {
-                break;
+                return nullptr;
+            }
+        } else {
+            // Traverse to next sibling
+            ++index;
+        }
+
+        const auto siblings = layer->siblings();
+
+        // Traverse to parent layer if last child
+        if (index == siblings.size()) {
+            layer = layer->parentLayer();
+            index = layer ? layer->siblingIndex() : -1;
+        } else {
+            layer = siblings.at(index);
+
+            // If next layer is a group, traverse to its first child
+            while (layer->isGroupLayer()) {
+                auto groupLayer = static_cast<GroupLayer*>(layer);
+                if (groupLayer->layerCount() > 0) {
+                    index = 0;
+                    layer = groupLayer->layerAt(0);
+                } else {
+                    break;
+                }
             }
         }
-    }
+    } while (layer && !(layer->layerType() & mLayerTypes));
 
     mCurrentLayer = layer;
     mSiblingIndex = index;
 
     return layer;
+}
+bool Layer::canUseTileSet(const SharedTileset tileset) const
+{
+    if (mAllowedTilesets.length() == 0)
+        return true;
+
+    for (auto i = mAllowedTilesets.constBegin(); i != mAllowedTilesets.constEnd(); i++) {
+        if ((*i)->fileName() == tileset->fileName()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Layer::removeAllowedTileset(Tiled::SharedTileset tileset)
+{
+    mAllowedTilesets.removeAll(tileset);
+}
+void Layer::addAllowedTileset(const Tiled::SharedTileset tileset)
+{
+    mAllowedTilesets.append(tileset);
+}
+void Layer::setAllowedTilesets(const QVector<Tiled::SharedTileset> tilesets)
+{
+    mAllowedTilesets.clear();
+    mAllowedTilesets.append(tilesets);
 }
 
 Layer *LayerIterator::previous()
@@ -238,37 +268,39 @@ Layer *LayerIterator::previous()
     Layer *layer = mCurrentLayer;
     int index = mSiblingIndex - 1;
 
-    if (!layer) {
-        // Traverse to the last layer of the map if at the end
-        if (mMap && index < mMap->layerCount() && mMap->layerCount() > 0) {
-            layer = mMap->layerAt(index);
+    do {
+        if (!layer) {
+            // Traverse to the last layer of the map if at the end
+            if (mMap && index < mMap->layerCount() && mMap->layerCount() > 0) {
+                layer = mMap->layerAt(index);
+            } else {
+                return nullptr;
+            }
         } else {
-            return nullptr;
-        }
-    } else {
-        // Traverse down to last child if applicable
-        if (layer->isGroupLayer()) {
-            auto groupLayer = static_cast<GroupLayer*>(layer);
-            if (groupLayer->layerCount() > 0) {
-                mSiblingIndex = groupLayer->layerCount() - 1;
-                mCurrentLayer = groupLayer->layerAt(mSiblingIndex);
-                return mCurrentLayer;
-            }
-        }
-
-        // Traverse to previous sibling (possibly of a parent)
-        do {
-            if (index >= 0) {
-                const auto siblings = layer->siblings();
-                layer = siblings.at(index);
-                break;
+            // Traverse down to last child if applicable
+            if (layer->isGroupLayer()) {
+                auto groupLayer = static_cast<GroupLayer*>(layer);
+                if (groupLayer->layerCount() > 0) {
+                    mSiblingIndex = groupLayer->layerCount() - 1;
+                    mCurrentLayer = groupLayer->layerAt(mSiblingIndex);
+                    return mCurrentLayer;
+                }
             }
 
-            layer = layer->parentLayer();
-            if (layer)
-                index = layer->siblingIndex() - 1;
-        } while (layer);
-    }
+            // Traverse to previous sibling (possibly of a parent)
+            do {
+                if (index >= 0) {
+                    const auto siblings = layer->siblings();
+                    layer = siblings.at(index);
+                    break;
+                }
+
+                layer = layer->parentLayer();
+                if (layer)
+                    index = layer->siblingIndex() - 1;
+            } while (layer);
+        }
+    } while (layer && !(layer->layerType() & mLayerTypes));
 
     mCurrentLayer = layer;
     mSiblingIndex = index;
@@ -276,48 +308,48 @@ Layer *LayerIterator::previous()
     return layer;
 }
 
-void LayerIterator::toFront()
-{
-    mCurrentLayer = nullptr;
-    mSiblingIndex = -1;
-}
+    void LayerIterator::toFront()
+    {
+        mCurrentLayer = nullptr;
+        mSiblingIndex = -1;
+    }
 
-void LayerIterator::toBack()
-{
-    mCurrentLayer = nullptr;
-    mSiblingIndex = mMap ? mMap->layerCount() : -1;
-}
+    void LayerIterator::toBack()
+    {
+        mCurrentLayer = nullptr;
+        mSiblingIndex = mMap ? mMap->layerCount() : -1;
+    }
 
 
-/**
- * Returns the global layer index for the given \a layer. Obtained by iterating
- * the layer's map while incrementing the index until layer is found.
- */
-int globalIndex(Layer *layer)
-{
-    if (!layer)
-        return -1;
+    /**
+     * Returns the global layer index for the given \a layer. Obtained by iterating
+     * the layer's map while incrementing the index until layer is found.
+     */
+    int globalIndex(Layer *layer)
+    {
+        if (!layer)
+            return -1;
 
-    LayerIterator counter(layer->map());
-    int index = 0;
-    while (counter.next() && counter.currentLayer() != layer)
-        ++index;
+        LayerIterator counter(layer->map());
+        int index = 0;
+        while (counter.next() && counter.currentLayer() != layer)
+            ++index;
 
-    return index;
-}
+        return index;
+    }
 
-/**
- * Returns the layer at the given global \a index.
- *
- * \sa globalIndex()
- */
-Layer *layerAtGlobalIndex(const Map *map, int index)
-{
-    LayerIterator counter(map);
-    while (counter.next() && index > 0)
-        --index;
+    /**
+     * Returns the layer at the given global \a index.
+     *
+     * \sa globalIndex()
+     */
+    Layer *layerAtGlobalIndex(const Map *map, int index)
+    {
+        LayerIterator counter(map);
+        while (counter.next() && index > 0)
+            --index;
 
-    return counter.currentLayer();
-}
+        return counter.currentLayer();
+    }
 
 } // namespace Tiled

@@ -65,6 +65,8 @@
 #include <QRect>
 #include <QUndoStack>
 
+#include "qtcompat_p.h"
+
 using namespace Tiled;
 using namespace Tiled::Internal;
 
@@ -243,6 +245,12 @@ void MapDocument::setCurrentLayer(Layer *layer)
             setCurrentObject(mCurrentLayer);
 }
 
+void MapDocument::setSelectedLayers(const QList<Layer *> &layers)
+{
+    mSelectedLayers = layers;
+    emit selectedLayersChanged();
+}
+
 /**
  * Custom intersects check necessary because QRectF::intersects wants a
  * non-empty area of overlap, but we should also consider overlap with empty
@@ -359,17 +367,12 @@ void MapDocument::offsetMap(const QList<Layer*> &layers,
     if (layers.empty())
         return;
 
-    if (layers.size() == 1) {
-        mUndoStack->push(new OffsetLayer(this, layers.first(), offset,
+    mUndoStack->beginMacro(tr("Offset Map"));
+    for (auto layer : layers) {
+        mUndoStack->push(new OffsetLayer(this, layer, offset,
                                          bounds, wrapX, wrapY));
-    } else {
-        mUndoStack->beginMacro(tr("Offset Map"));
-        for (auto layer : layers) {
-            mUndoStack->push(new OffsetLayer(this, layer, offset,
-                                             bounds, wrapX, wrapY));
-        }
-        mUndoStack->endMacro();
     }
+    mUndoStack->endMacro();
 }
 
 /**
@@ -660,6 +663,95 @@ SharedTileset MapDocument::replaceTileset(int index, const SharedTileset &tilese
     return oldTileset;
 }
 
+/**
+ * Paints the tile layers present in the given \a map onto this map. Matches
+ * layers by name and creates new layers when they could not be found.
+ *
+ * In case the \a map only contains a single tile layer, it is always painted
+ * into the current tile layer. This happens also for unnamed layers. In these
+ * cases, the layers are skipped when the current layer isn't a tile layer.
+ *
+ * If the matched target layer is locked it is also skipped.
+ *
+ * \a mergeable indicates whether the paint operations performed by this
+ * function are mergeable with previous compatible paint operations.
+ *
+ * If \a missingTilesets is given, the listed tilesets will be added to the map
+ * on the first paint operation. The list will then be cleared.
+ *
+ * If \a paintedRegions is given, then no regionEdited signal is emitted.
+ * In this case it is the responsibility of the caller to emit this signal for
+ * each affected tile layer.
+ */
+void MapDocument::paintTileLayers(const Map *map, bool mergeable,
+                                  QVector<SharedTileset> *missingTilesets,
+                                  QHash<TileLayer*, QRegion> *paintedRegions)
+{
+    TileLayer *currentTileLayer = mCurrentLayer ? mCurrentLayer->asTileLayer() : nullptr;
+
+    LayerIterator it(map, Layer::TileLayerType);
+    const bool isMultiLayer = it.next() && it.next();
+
+    it.toFront();
+    while (auto tileLayer = static_cast<TileLayer*>(it.next())) {
+        TileLayer *targetLayer = currentTileLayer;
+        bool addLayer = false;
+
+        // When the map contains only a single layer, always paint it into
+        // the current layer. This makes sure you can still take pieces from
+        // one layer and draw them into another.
+        if (isMultiLayer && !tileLayer->name().isEmpty()) {
+            targetLayer = static_cast<TileLayer*>(mMap->findLayer(tileLayer->name(), Layer::TileLayerType));
+            if (!targetLayer) {
+                // Create a layer with this name
+                targetLayer = new TileLayer(tileLayer->name(), 0, 0,
+                                            mMap->width(),
+                                            mMap->height());
+                addLayer = true;
+            }
+        }
+
+        if (!targetLayer)
+            continue;
+        if (!targetLayer->isUnlocked())
+            continue;
+        if (!mMap->infinite() && !targetLayer->rect().intersects(tileLayer->bounds()))
+            continue;
+
+        PaintTileLayer *paint = new PaintTileLayer(this,
+                                                   targetLayer,
+                                                   tileLayer->x(),
+                                                   tileLayer->y(),
+                                                   tileLayer);
+
+        if (missingTilesets && !missingTilesets->isEmpty()) {
+            for (const SharedTileset &tileset : *missingTilesets) {
+                if (!mMap->tilesets().contains(tileset))
+                    new AddTileset(this, tileset, paint);
+            }
+
+            missingTilesets->clear();
+        }
+
+        if (addLayer) {
+            new AddLayer(this,
+                         mMap->layerCount(), targetLayer, nullptr,
+                         paint);
+        }
+
+        paint->setMergeable(mergeable);
+        undoStack()->push(paint);
+
+        const QRegion editedRegion = tileLayer->region();
+        if (paintedRegions)
+            (*paintedRegions)[targetLayer] |= editedRegion;
+        else
+            emit regionEdited(editedRegion, targetLayer);
+
+        mergeable = true; // further paints are always mergeable
+    }
+}
+
 void MapDocument::replaceObjectTemplate(const ObjectTemplate *oldObjectTemplate,
                                         const ObjectTemplate *newObjectTemplate)
 {
@@ -741,20 +833,19 @@ void MapDocument::setHoveredMapObject(MapObject *object)
 void MapDocument::unifyTilesets(Map *map)
 {
     QList<QUndoCommand*> undoCommands;
-    const QVector<SharedTileset> &existingTilesets = mMap->tilesets();
-    QVector<SharedTileset> addedTilesets;
+    QVector<SharedTileset> availableTilesets = mMap->tilesets();
     TilesetManager *tilesetManager = TilesetManager::instance();
 
     // Iterate over a copy because map->replaceTileset may invalidate iterator
     const QVector<SharedTileset> tilesets = map->tilesets();
     for (const SharedTileset &tileset : tilesets) {
-        if (existingTilesets.contains(tileset))
+        if (availableTilesets.contains(tileset))
             continue;
 
-        SharedTileset replacement = tileset->findSimilarTileset(existingTilesets);
-        if (!replacement && !addedTilesets.contains(replacement)) {
+        SharedTileset replacement = tileset->findSimilarTileset(availableTilesets);
+        if (!replacement) {
             undoCommands.append(new AddTileset(this, tileset));
-            addedTilesets.append(replacement);
+            availableTilesets.append(tileset);
             continue;
         }
 
@@ -794,22 +885,26 @@ void MapDocument::unifyTilesets(Map *map)
  */
 void MapDocument::unifyTilesets(Map *map, QVector<SharedTileset> &missingTilesets)
 {
-    const QVector<SharedTileset> &existingTilesets = mMap->tilesets();
+    QVector<SharedTileset> availableTilesets = mMap->tilesets();
+    for (const SharedTileset &tileset : qAsConst(missingTilesets))
+        if (!availableTilesets.contains(tileset))
+            availableTilesets.append(tileset);
+
     TilesetManager *tilesetManager = TilesetManager::instance();
 
     // Iterate over a copy because map->replaceTileset may invalidate iterator
     const QVector<SharedTileset> tilesets = map->tilesets();
     for (const SharedTileset &tileset : tilesets) {
         // tileset already added
-        if (existingTilesets.contains(tileset))
+        if (availableTilesets.contains(tileset))
             continue;
 
-        SharedTileset replacement = tileset->findSimilarTileset(existingTilesets);
+        SharedTileset replacement = tileset->findSimilarTileset(availableTilesets);
 
         // tileset not present and no replacement tileset found
         if (!replacement) {
-            if (!missingTilesets.contains(tileset))
-                missingTilesets.append(tileset);
+            missingTilesets.append(tileset);
+            availableTilesets.append(tileset);
             continue;
         }
 
