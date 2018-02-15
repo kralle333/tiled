@@ -1,7 +1,6 @@
 /*
- * offsetlayer.h
- * Copyright 2009, Jeff Bland <jeff@teamphobic.com>
- * Copyright 2009, Thorbjørn Lindeijer <thorbjorn@lindeijer.nl>
+ * undocommands.cpp
+ * Copyright 2017, Thorbjørn Lindeijer <thorbjorn@lindeijer.nl>
  *
  * This file is part of Tiled.
  *
@@ -19,46 +18,28 @@
  * this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "undocommands.h"
 
-#include <QRect>
-#include <QPoint>
 #include <QUndoCommand>
 
 namespace Tiled {
-
-class Layer;
-
 namespace Internal {
 
-class MapDocument;
-
-/**
- * Undo command that offsets a map layer.
- */
-class OffsetLayer : public QUndoCommand
+bool cloneChildren(const QUndoCommand *command, QUndoCommand *parent)
 {
-public:
-    OffsetLayer(MapDocument *mapDocument,
-                Layer *layer,
-                const QPoint &offset,
-                const QRect &bounds,
-                bool xWrap,
-                bool yWrap);
+    const int childCount = command->childCount();
 
-    ~OffsetLayer() override;
+    // Check if we're allowed to clone all children
+    for (int i = 0; i < childCount; ++i)
+        if (!dynamic_cast<const ClonableUndoCommand*>(command->child(i)))
+            return false;
 
-    void undo() override;
-    void redo() override;
+    // Actually clone the children
+    for (int i = 0; i < childCount; ++i)
+        dynamic_cast<const ClonableUndoCommand*>(command->child(i))->clone(parent);
 
-private:
-    MapDocument *mMapDocument;
-    bool mDone;
-    Layer *mOriginalLayer;
-    Layer *mOffsetLayer;
-    QPointF mOldOffset;
-    QPointF mNewOffset;
-};
+    return true;
+}
 
 } // namespace Internal
 } // namespace Tiled
