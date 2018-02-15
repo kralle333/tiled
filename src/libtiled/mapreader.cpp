@@ -310,18 +310,16 @@ Map *MapReaderPrivate::readMap()
 
         //Link temporarily set allowed tilesets with actual loaded tilesets
         for each (Layer *layer in mMap->layers()) {
-            if (layer->isTileLayer() || layer->isGroupLayer()) {
-                QVector<SharedTileset> newTilesets;
-                for (SharedTileset &tileset : tilesets) {
-                    for each (SharedTileset tempTileset in layer->getAllowedTilesets()) {
-                        if (tileset->fileName() == tempTileset->fileName()) {
-                            newTilesets.append(tileset);
-                        }
+            QVector<SharedTileset> newTilesets;
+            for (SharedTileset tileset : tilesets) {
+                for each (SharedTileset tempTileset in layer->getAllowedTilesets()) {
+                    if (tileset->fileName() == tempTileset->fileName()) {
+                        newTilesets.append(tileset);
                     }
                 }
-                //Clears all temp tilesets and adds actual tilesets to the list of allowed tilesets
-                layer->setAllowedTilesets(newTilesets);
             }
+            //Clears all temp tilesets and adds actual tilesets to the list of allowed tilesets
+            layer->setAllowedTilesets(newTilesets);
         }
 
         // Fix up sizes of tile objects. This is for backwards compatibility.
