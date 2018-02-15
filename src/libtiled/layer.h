@@ -194,7 +194,7 @@ public:
     {
         return mAllowedTilesets;
     }
-
+    void removeAllowedTileset(Tiled::SharedTileset tileset);
     void addAllowedTileset(const Tiled::SharedTileset tileset);
     void setAllowedTilesets(const QVector<Tiled::SharedTileset> tilesets);
     

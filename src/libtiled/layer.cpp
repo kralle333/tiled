@@ -247,6 +247,10 @@ bool Layer::canUseTileSet(const SharedTileset tileset) const
     return false;
 }
 
+void Layer::removeAllowedTileset(Tiled::SharedTileset tileset)
+{
+    mAllowedTilesets.removeAll(tileset);
+}
 void Layer::addAllowedTileset(const Tiled::SharedTileset tileset)
 {
     mAllowedTilesets.append(tileset);

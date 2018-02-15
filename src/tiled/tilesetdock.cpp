@@ -168,7 +168,14 @@ static void removeTileReferences(MapDocument *mapDocument,
         }
     }
 }
-
+static void removeAllowedTilesetsReferences(MapDocument *mapDocument, SharedTileset sharedTileset)
+{
+    for (Layer *layer : mapDocument->map()->layers()) {
+        if (layer->isTileLayer() || layer->isObjectGroup()) {
+            layer->removeAllowedTileset(sharedTileset);
+        }
+    }
+}
 } // anonymous namespace
 
 TilesetDock::TilesetDock(QWidget *parent)
@@ -680,6 +687,7 @@ void TilesetDock::removeTileset(int index)
         };
         undoStack->beginMacro(remove->text());
         removeTileReferences(mMapDocument, referencesTileset);
+        removeAllowedTilesetsReferences(mMapDocument, sharedTileset);
     }
     undoStack->push(remove);
     if (inUse)
