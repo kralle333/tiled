@@ -56,6 +56,9 @@ void SetAllowedTilesetsDialog::enableAllTilesets()
         QListWidgetItem* item = mUi->disabledTilesetsList->item(i);
         mUi->enabledTilesetsList->addItem(item->text());
     }
+    while (mUi->disabledTilesetsList->count()>0) {
+        mUi->disabledTilesetsList->takeItem(0);
+    }
     mWasListChanged = true;
 }
 
@@ -77,7 +80,9 @@ void SetAllowedTilesetsDialog::disableAllTilesets()
         QListWidgetItem* item = mUi->enabledTilesetsList->item(i);
         mUi->disabledTilesetsList->addItem(item->text());
     }
-    mUi->enabledTilesetsList->clear();
+    while (mUi->enabledTilesetsList->count()>0) {
+        mUi->enabledTilesetsList->takeItem(0);
+    }
     mWasListChanged = true;
 }
 
