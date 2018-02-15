@@ -208,10 +208,6 @@ Layer *LayerIterator::next()
             // Traverse to next sibling
             ++index;
         }
-    } else {
-     // Traverse to next sibling
-        ++index;
-    }
 
         const auto siblings = layer->siblings();
 
@@ -281,16 +277,14 @@ Layer *LayerIterator::previous()
                 return nullptr;
             }
         } else {
-            return nullptr;
-        }
-    } else {
-     // Traverse down to last child if applicable
-        if (layer->isGroupLayer()) {
-            auto groupLayer = static_cast<GroupLayer*>(layer);
-            if (groupLayer->layerCount() > 0) {
-                mSiblingIndex = groupLayer->layerCount() - 1;
-                mCurrentLayer = groupLayer->layerAt(mSiblingIndex);
-                return mCurrentLayer;
+            // Traverse down to last child if applicable
+            if (layer->isGroupLayer()) {
+                auto groupLayer = static_cast<GroupLayer*>(layer);
+                if (groupLayer->layerCount() > 0) {
+                    mSiblingIndex = groupLayer->layerCount() - 1;
+                    mCurrentLayer = groupLayer->layerAt(mSiblingIndex);
+                    return mCurrentLayer;
+                }
             }
 
             // Traverse to previous sibling (possibly of a parent)
@@ -314,48 +308,48 @@ Layer *LayerIterator::previous()
     return layer;
 }
 
-void LayerIterator::toFront()
-{
-    mCurrentLayer = nullptr;
-    mSiblingIndex = -1;
-}
+    void LayerIterator::toFront()
+    {
+        mCurrentLayer = nullptr;
+        mSiblingIndex = -1;
+    }
 
-void LayerIterator::toBack()
-{
-    mCurrentLayer = nullptr;
-    mSiblingIndex = mMap ? mMap->layerCount() : -1;
-}
+    void LayerIterator::toBack()
+    {
+        mCurrentLayer = nullptr;
+        mSiblingIndex = mMap ? mMap->layerCount() : -1;
+    }
 
 
-/**
- * Returns the global layer index for the given \a layer. Obtained by iterating
- * the layer's map while incrementing the index until layer is found.
- */
-int globalIndex(Layer *layer)
-{
-    if (!layer)
-        return -1;
+    /**
+     * Returns the global layer index for the given \a layer. Obtained by iterating
+     * the layer's map while incrementing the index until layer is found.
+     */
+    int globalIndex(Layer *layer)
+    {
+        if (!layer)
+            return -1;
 
-    LayerIterator counter(layer->map());
-    int index = 0;
-    while (counter.next() && counter.currentLayer() != layer)
-        ++index;
+        LayerIterator counter(layer->map());
+        int index = 0;
+        while (counter.next() && counter.currentLayer() != layer)
+            ++index;
 
-    return index;
-}
+        return index;
+    }
 
-/**
- * Returns the layer at the given global \a index.
- *
- * \sa globalIndex()
- */
-Layer *layerAtGlobalIndex(const Map *map, int index)
-{
-    LayerIterator counter(map);
-    while (counter.next() && index > 0)
-        --index;
+    /**
+     * Returns the layer at the given global \a index.
+     *
+     * \sa globalIndex()
+     */
+    Layer *layerAtGlobalIndex(const Map *map, int index)
+    {
+        LayerIterator counter(map);
+        while (counter.next() && index > 0)
+            --index;
 
-    return counter.currentLayer();
-}
+        return counter.currentLayer();
+    }
 
 } // namespace Tiled
