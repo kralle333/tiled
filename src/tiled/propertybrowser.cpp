@@ -710,15 +710,6 @@ void PropertyBrowser::addTileLayerProperties()
 {
     QtProperty *groupProperty = mGroupManager->addProperty(tr("Tile Layer"));
     addLayerProperties(groupProperty);
-
-    QtVariantProperty *allowedTilesetsProperty =
-        addProperty(AllowedTileSetsProperty,
-            QtVariantPropertyManager::enumTypeId(),
-            tr("Allowed Tile Set"),
-            groupProperty);
-
-    allowedTilesetsProperty->setAttribute(QLatin1String("enumNames"), getTilesetsOptions());
-
     addProperty(groupProperty);
 }
 
@@ -726,23 +717,6 @@ void PropertyBrowser::addObjectGroupProperties()
 {
     QtProperty *groupProperty = mGroupManager->addProperty(tr("Object Layer"));
     addLayerProperties(groupProperty);
-
-    QVector<Tiled::SharedTileset> tilesets = mMapDocument->map()->tilesets();
-    QStringList availabeTilesetsList;
-    availabeTilesetsList << QLatin1String("All");
-    foreach(Tiled::SharedTileset t, tilesets)
-    {
-        availabeTilesetsList << t->name();
-    }
-
-    QtVariantProperty *allowedTilesetsProperty =
-        addProperty(AllowedTileSetsProperty,
-            QtVariantPropertyManager::enumTypeId(),
-            tr("Allowed Tile Set"),
-            groupProperty);
-
-    allowedTilesetsProperty->setAttribute(QLatin1String("enumNames"), availabeTilesetsList);
-
 
     addProperty(ColorProperty, QVariant::Color, tr("Color"), groupProperty);
 
@@ -1130,18 +1104,6 @@ void PropertyBrowser::applyLayerValue(PropertyId id, const QVariant &val)
     case LockedProperty:
         command = new SetLayerLocked(mMapDocument, layer, val.toBool());
         break;
-    case AllowedTileSetsProperty:
-    {
-        QString usedName = QLatin1String("");
-        int enumIndex = val.toInt();
-        if (enumIndex > 0)
-        {
-            Tiled::SharedTileset usedTileSet = mMapDocument->map()->tilesets().at(enumIndex - 1);
-            usedName = usedTileSet->name();
-        }
-        command = new SetLayerAllowedTileSet(mMapDocument, layer, usedName);
-        break;
-    }
     case OpacityProperty:
         command = new SetLayerOpacity(mMapDocument, layer, val.toDouble());
         break;
@@ -1654,11 +1616,6 @@ void PropertyBrowser::updateProperties()
         mIdToProperty[NameProperty]->setValue(layer->name());
         mIdToProperty[VisibleProperty]->setValue(layer->isVisible());
         mIdToProperty[LockedProperty]->setValue(layer->isLocked());
-        if (layer->layerType() != Layer::GroupLayerType)
-        {
-            int selectedTileSet = getTilesetsOptions().indexOf(layer->allowedTileSet());
-            mIdToProperty[AllowedTileSetsProperty]->setValue(selectedTileSet);
-        }
         mIdToProperty[OpacityProperty]->setValue(layer->opacity());
         mIdToProperty[OffsetXProperty]->setValue(layer->offset().x());
         mIdToProperty[OffsetYProperty]->setValue(layer->offset().y());

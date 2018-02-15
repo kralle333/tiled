@@ -35,6 +35,7 @@
 #include "mapview.h"
 #include "movelayer.h"
 #include "objectgroup.h"
+#include "setallowedtilesetsdialog.h"
 #include "tilelayer.h"
 #include "utils.h"
 
@@ -43,6 +44,7 @@
 #include <QClipboard>
 #include <QCursor>
 #include <QMenu>
+#include <QMessageBox>
 #include <QtCore/qmath.h>
 #include <QStyle>
 
@@ -129,6 +131,10 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     mActionLayerProperties->setIcon(
             QIcon(QLatin1String(":images/16x16/document-properties.png")));
 
+    mActionTilesetsAllowed = new QAction(this);
+    mActionTilesetsAllowed->setIcon(
+        QIcon(QLatin1String(":images/16x16/layer-tile.png")));
+
     mActionDuplicateObjects = new QAction(this);
     mActionDuplicateObjects->setIcon(QIcon(QLatin1String(":/images/16x16/stock-duplicate-16.png")));
 
@@ -164,6 +170,8 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     connect(mActionMoveLayerDown, &QAction::triggered, this, &MapDocumentActionHandler::moveLayerDown);
     connect(mActionToggleOtherLayers, &QAction::triggered, this, &MapDocumentActionHandler::toggleOtherLayers);
     connect(mActionLayerProperties, &QAction::triggered, this, &MapDocumentActionHandler::layerProperties);
+    connect(mActionTilesetsAllowed, &QAction::triggered, this, &MapDocumentActionHandler::tilesetsAllowed);
+
 
     connect(mActionDuplicateObjects, &QAction::triggered, this, &MapDocumentActionHandler::duplicateObjects);
     connect(mActionRemoveObjects, &QAction::triggered, this, &MapDocumentActionHandler::removeObjects);
@@ -202,6 +210,7 @@ void MapDocumentActionHandler::retranslateUi()
     mActionMoveLayerUp->setText(tr("R&aise Layer"));
     mActionMoveLayerDown->setText(tr("&Lower Layer"));
     mActionToggleOtherLayers->setText(tr("Show/&Hide all Other Layers"));
+    mActionTilesetsAllowed->setText(tr("Set Tilesets Allowed"));
     mActionLayerProperties->setText(tr("Layer &Properties..."));
 }
 
@@ -642,6 +651,32 @@ void MapDocumentActionHandler::toggleOtherLayers()
 {
     if (mMapDocument)
         mMapDocument->toggleOtherLayers(mMapDocument->currentLayer());
+}
+void MapDocumentActionHandler::tilesetsAllowed()
+{
+    QScopedPointer<SetAllowedTilesetsDialog> dialog(new SetAllowedTilesetsDialog);
+    dialog->populateTilesetLists(mMapDocument->map()->tilesets(), mMapDocument->currentLayer()->getAllowedTilesets());
+
+    int result = dialog->exec();
+    if (result == QMessageBox::Accepted && dialog->wasListChanged())
+    {
+        QVector<SharedTileset> newAllowedTilesets;
+        for each (QString tilesetName in dialog->getAllowedTilesets())
+        {
+            for each (SharedTileset tileset in mMapDocument->map()->tilesets())
+            {
+                //TODO: Multiple tilesets might have the same name, do a check with absolute path instead or address.
+                if (tilesetName == tileset->name())
+                {
+                    newAllowedTilesets.append(tileset);
+                    break;
+                }
+            }
+        }
+        mMapDocument->currentLayer()->setAllowedTilesets(newAllowedTilesets);
+        emit allowedTilesetsChangedForCurrentLayer();
+    }
+
 }
 
 void MapDocumentActionHandler::layerProperties()

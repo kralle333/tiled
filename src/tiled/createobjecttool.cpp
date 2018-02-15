@@ -155,7 +155,7 @@ bool CreateObjectTool::startNewMapObject(const QPointF &pos,
     if (!objectGroup->isUnlocked())
         return false;
 
-    if (tile() && tile()->isPartOfTileset() && !objectGroup->canUseTileSet(tile()->tileset()))
+    if (tile() && tile()->isPartOfTileset() && !objectGroup->canUseTileSet(tile()->sharedTileset()))
     {
         return false;
     }
