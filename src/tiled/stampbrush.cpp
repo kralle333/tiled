@@ -47,7 +47,7 @@ using namespace Tiled::Internal;
 StampBrush::StampBrush(QObject *parent)
     : AbstractTileTool(tr("Stamp Brush"),
                        QIcon(QLatin1String(
-                               ":images/22x22/stock-tool-clone.png")),
+                           ":images/22x22/stock-tool-clone.png")),
                        QKeySequence(tr("B")),
                        nullptr,
                        parent)
@@ -269,7 +269,7 @@ void StampBrush::setWangSet(WangSet *wangSet)
     const SharedTileset &tileset = wangSet->tileset()->sharedPointer();
 
     if (!mapDocument() || !mapDocument()->map()->tilesets().contains(tileset))
-       mMissingTilesets.append(tileset);
+        mMissingTilesets.append(tileset);
 }
 
 void StampBrush::beginPaint()
@@ -325,7 +325,7 @@ void StampBrush::doPaint(int flags, QHash<TileLayer*, QRegion> *paintedRegions)
     Q_ASSERT(currentTileLayer());
 
     mapDocument()->paintTileLayers(preview.data(),
-                                   (flags & Mergeable) == Mergeable,
+        (flags & Mergeable) == Mergeable,
                                    &mMissingTilesets,
                                    paintedRegions);
 }
@@ -449,7 +449,7 @@ void StampBrush::drawPreviewLayer(const QVector<QPoint> &points)
 
             // if staggered map, makes sure stamp stays the same
             if (mapDocument()->map()->isStaggered()
-                    && ((mapStaggerAxis == Map::StaggerY) ? map->height() > 1 : map->width() > 1)) {
+                && ((mapStaggerAxis == Map::StaggerY) ? map->height() > 1 : map->width() > 1)) {
 
                 Map::StaggerIndex mapStaggerIndex = mapDocument()->map()->staggerIndex();
                 Map::StaggerIndex stampStaggerIndex = map->staggerIndex();

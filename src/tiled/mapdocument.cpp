@@ -106,12 +106,12 @@ MapDocument::MapDocument(Map *map, const QString &fileName)
     connect(mMapObjectModel, SIGNAL(objectsRemoved(QList<MapObject*>)),
             SLOT(onObjectsRemoved(QList<MapObject*>)));
 
-    connect(mMapObjectModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            SLOT(onMapObjectModelRowsInserted(QModelIndex,int,int)));
-    connect(mMapObjectModel, SIGNAL(rowsRemoved(QModelIndex,int,int)),
-            SLOT(onMapObjectModelRowsInsertedOrRemoved(QModelIndex,int,int)));
-    connect(mMapObjectModel, SIGNAL(rowsMoved(QModelIndex,int,int,QModelIndex,int)),
-            SLOT(onObjectsMoved(QModelIndex,int,int,QModelIndex,int)));
+    connect(mMapObjectModel, SIGNAL(rowsInserted(QModelIndex, int, int)),
+            SLOT(onMapObjectModelRowsInserted(QModelIndex, int, int)));
+    connect(mMapObjectModel, SIGNAL(rowsRemoved(QModelIndex, int, int)),
+            SLOT(onMapObjectModelRowsInsertedOrRemoved(QModelIndex, int, int)));
+    connect(mMapObjectModel, SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)),
+            SLOT(onObjectsMoved(QModelIndex, int, int, QModelIndex, int)));
 
     // Register tileset references
     TilesetManager *tilesetManager = TilesetManager::instance();
@@ -261,9 +261,9 @@ void MapDocument::setSelectedLayers(const QList<Layer *> &layers)
 static bool intersects(const QRectF &a, const QRectF &b)
 {
     return a.right() >= b.left() &&
-            a.bottom() >= b.top() &&
-            a.left() <= b.right() &&
-            a.top() <= b.bottom();
+        a.bottom() >= b.top() &&
+        a.left() <= b.right() &&
+        a.top() <= b.bottom();
 }
 
 static bool visibleIn(const QRectF &area, MapObject *object,
@@ -729,6 +729,17 @@ void MapDocument::paintTileLayers(const Map *map, bool mergeable,
         if (!mMap->infinite() && !targetLayer->rect().intersects(tileLayer->bounds()))
             continue;
 
+        bool isAllowedToPaint = true;
+        for each(SharedTileset tileset in tileLayer->usedTilesets()) {
+            if (!targetLayer->canUseTileSet(tileset)) {
+                isAllowedToPaint = false;
+                break;
+            }
+        }
+        if (!isAllowedToPaint)
+            return;
+
+
         PaintTileLayer *paint = new PaintTileLayer(this,
                                                    targetLayer,
                                                    tileLayer->x(),
@@ -956,7 +967,7 @@ void MapDocument::onMapObjectModelRowsInsertedOrRemoved(const QModelIndex &paren
 {
     Q_UNUSED(first)
 
-    ObjectGroup *objectGroup = mMapObjectModel->toObjectGroup(parent);
+        ObjectGroup *objectGroup = mMapObjectModel->toObjectGroup(parent);
     if (!objectGroup)
         return;
 
