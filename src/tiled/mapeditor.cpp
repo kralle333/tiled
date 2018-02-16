@@ -198,6 +198,7 @@ MapEditor::MapEditor(QObject *parent)
     mToolsToolBar->addAction(mToolManager->registerTool(new MagicWandTool(this)));
     mToolsToolBar->addAction(mToolManager->registerTool(new SelectSameTileTool(this)));
     mToolsToolBar->addSeparator();
+    mToolsToolBar->addAction(mToolManager->registerTool(tileObjectsTool));
     mToolsToolBar->addAction(mToolManager->registerTool(new ObjectSelectionTool(this)));
     mToolsToolBar->addAction(mToolManager->registerTool(mEditPolygonTool));
     mToolsToolBar->addAction(mToolManager->registerTool(rectangleObjectsTool));
@@ -205,7 +206,6 @@ MapEditor::MapEditor(QObject *parent)
     mToolsToolBar->addAction(mToolManager->registerTool(ellipseObjectsTool));
     mToolsToolBar->addAction(mToolManager->registerTool(polygonObjectsTool));
     mToolsToolBar->addAction(mToolManager->registerTool(polylineObjectsTool));
-    mToolsToolBar->addAction(mToolManager->registerTool(tileObjectsTool));
     mToolsToolBar->addAction(mToolManager->registerTool(templatesTool));
     mToolsToolBar->addAction(mToolManager->registerTool(textObjectsTool));
     mToolsToolBar->addSeparator();
