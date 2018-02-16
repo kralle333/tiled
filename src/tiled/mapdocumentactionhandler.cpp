@@ -127,6 +127,11 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     mActionToggleOtherLayers->setIcon(
             QIcon(QLatin1String(":/images/16x16/show_hide_others.png")));
 
+    mActionToggleLockOtherLayers = new QAction(this);
+    mActionToggleLockOtherLayers->setShortcut(tr("Ctrl+Shift+U"));
+    mActionToggleLockOtherLayers->setIcon(
+        QIcon(QLatin1String(":/images/16x16/locked.png")));
+
     mActionLayerProperties = new QAction(this);
     mActionLayerProperties->setIcon(
             QIcon(QLatin1String(":images/16x16/document-properties.png")));
@@ -169,6 +174,7 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     connect(mActionMoveLayerUp, &QAction::triggered, this, &MapDocumentActionHandler::moveLayerUp);
     connect(mActionMoveLayerDown, &QAction::triggered, this, &MapDocumentActionHandler::moveLayerDown);
     connect(mActionToggleOtherLayers, &QAction::triggered, this, &MapDocumentActionHandler::toggleOtherLayers);
+    connect(mActionToggleLockOtherLayers, &QAction::triggered, this, &MapDocumentActionHandler::toggleLockOtherLayers);
     connect(mActionLayerProperties, &QAction::triggered, this, &MapDocumentActionHandler::layerProperties);
     connect(mActionTilesetsAllowed, &QAction::triggered, this, &MapDocumentActionHandler::tilesetsAllowed);
 
@@ -210,6 +216,7 @@ void MapDocumentActionHandler::retranslateUi()
     mActionMoveLayerUp->setText(tr("R&aise Layer"));
     mActionMoveLayerDown->setText(tr("&Lower Layer"));
     mActionToggleOtherLayers->setText(tr("Show/&Hide all Other Layers"));
+    mActionToggleLockOtherLayers->setText(tr("Lock/&Unlock all Other Layers"));
     mActionTilesetsAllowed->setText(tr("Set Tilesets Allowed"));
     mActionLayerProperties->setText(tr("Layer &Properties..."));
 }
@@ -679,6 +686,12 @@ void MapDocumentActionHandler::tilesetsAllowed()
 
 }
 
+void MapDocumentActionHandler::toggleLockOtherLayers()
+{
+    if (mMapDocument)
+        mMapDocument->toggleLockOtherLayers(mMapDocument->currentLayer());
+}
+
 void MapDocumentActionHandler::layerProperties()
 {
     if (mMapDocument) {
@@ -782,6 +795,7 @@ void MapDocumentActionHandler::updateActions()
     mActionMoveLayerUp->setEnabled(canMoveLayerUp);
     mActionMoveLayerDown->setEnabled(canMoveLayerDown);
     mActionToggleOtherLayers->setEnabled(currentLayer && (hasNextLayer || hasPreviousLayer));
+    mActionToggleLockOtherLayers->setEnabled(currentLayer && (hasNextLayer || hasPreviousLayer));
     mActionRemoveLayer->setEnabled(currentLayer);
     mActionLayerProperties->setEnabled(currentLayer);
 
