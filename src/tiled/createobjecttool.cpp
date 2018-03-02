@@ -46,12 +46,11 @@ using namespace Tiled::Internal;
 CreateObjectTool::CreateObjectTool(QObject *parent)
     : AbstractObjectTool(QString(),
                          QIcon(),
-                         QKeySequence(tr("O")),
+                         QKeySequence(),
                          parent)
     , mNewMapObjectGroup(new ObjectGroup)
     , mObjectGroupItem(new ObjectGroupItem(mNewMapObjectGroup))
     , mNewMapObjectItem(nullptr)
-    , mOverlayPolygonItem(nullptr)
 {
     mObjectGroupItem->setZValue(10000); // same as the BrushItem
 }
@@ -178,6 +177,9 @@ bool CreateObjectTool::startNewMapObject(const QPointF &pos,
     return true;
 }
 
+/**
+ * Deletes the new map object item, and returns its map object.
+ */
 MapObject *CreateObjectTool::clearNewMapObjectItem()
 {
     Q_ASSERT(mNewMapObjectItem);
@@ -188,9 +190,6 @@ MapObject *CreateObjectTool::clearNewMapObjectItem()
 
     delete mNewMapObjectItem;
     mNewMapObjectItem = nullptr;
-
-    delete mOverlayPolygonItem;
-    mOverlayPolygonItem = nullptr;
 
     return newMapObject;
 }
@@ -211,8 +210,7 @@ void CreateObjectTool::finishNewMapObject()
         return;
     }
 
-    MapObject *newMapObject = mNewMapObjectItem->mapObject();
-    clearNewMapObjectItem();
+    MapObject *newMapObject = clearNewMapObjectItem();
 
     auto addObjectCommand = new AddMapObject(mapDocument(),
                                              objectGroup,

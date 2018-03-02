@@ -60,7 +60,6 @@
 #include <QMimeData>
 #include <QPushButton>
 #include <QSettings>
-#include <QSignalMapper>
 #include <QStackedWidget>
 #include <QStylePainter>
 #include <QToolBar>
@@ -212,7 +211,6 @@ TilesetDock::TilesetDock(QWidget *parent)
     , mTilesetMenuButton(new TilesetMenuButton(this))
     , mTilesetMenu(new QMenu(this))
     , mTilesetActionGroup(new QActionGroup(this))
-    , mTilesetMenuMapper(nullptr)
     , mEmittingStampCaptured(false)
     , mSynchronizingSelection(false)
 {
@@ -1042,15 +1040,6 @@ void TilesetDock::refreshTilesetMenu()
 {
     mTilesetMenu->clear();
 
-    if (mTilesetMenuMapper) {
-        mTabBar->disconnect(mTilesetMenuMapper);
-        delete mTilesetMenuMapper;
-    }
-
-    mTilesetMenuMapper = new QSignalMapper(this);
-    connect(mTilesetMenuMapper, SIGNAL(mapped(int)),
-            mTabBar, SLOT(setCurrentIndex(int)));
-
     const int currentIndex = mTabBar->currentIndex();
     QVector<QTabWidget> tabsToRemove;
     for (int i = 0; i < mTabBar->count(); ++i) {
@@ -1060,16 +1049,13 @@ void TilesetDock::refreshTilesetMenu()
         } else {
             mTabBar->setTabEnabled(i, true);
         }
-        QAction *action = new QAction(mTabBar->tabText(i), this);
+        QAction *action = mTilesetMenu->addAction(mTabBar->tabText(i),
+                                                  [=] { mTabBar->setCurrentIndex(i); });
         action->setCheckable(false);
 
         mTilesetActionGroup->addAction(action);
         if (i == currentIndex)
             action->setChecked(true);
-
-        mTilesetMenu->addAction(action);
-        connect(action, SIGNAL(triggered()), mTilesetMenuMapper, SLOT(map()));
-        mTilesetMenuMapper->setMapping(action, i);
     }
 }
 
