@@ -831,7 +831,11 @@ void TilesetDock::onCurrentLayerChanged(Layer *layer)
 
 void TilesetDock::onTabMoved(int from, int to)
 {
+#if QT_VERSION >= 0x050600
     mTilesets.move(from, to);
+#else
+    mTilesets.insert(to, mTilesets.takeAt(from));
+#endif
     mTilesetDocuments.move(from, to);
 
     // Move the related tileset view
@@ -1049,8 +1053,9 @@ void TilesetDock::refreshTilesetMenu()
         } else {
             mTabBar->setTabEnabled(i, true);
         }
-        QAction *action = mTilesetMenu->addAction(mTabBar->tabText(i),
-                                                  [=] { mTabBar->setCurrentIndex(i); });
+ 		QAction *action = mTilesetMenu->addAction(mTabBar->tabText(i));
+        connect(action, &QAction::triggered, [=] { mTabBar->setCurrentIndex(i); });
+
         action->setCheckable(false);
 
         mTilesetActionGroup->addAction(action);

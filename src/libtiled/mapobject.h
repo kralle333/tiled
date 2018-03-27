@@ -247,20 +247,20 @@ private:
     void flipTileObject(const QTransform &flipTransform);
 
     int mId;
+    Shape mShape;
     QString mName;
     QString mType;
     QPointF mPos;
     QSizeF mSize;
     TextData mTextData;
     QPolygonF mPolygon;
-    Shape mShape;
     Cell mCell;
     const ObjectTemplate *mObjectTemplate;
     ObjectGroup *mObjectGroup;
     qreal mRotation;
     bool mVisible;
-    ChangedProperties mChangedProperties;
     bool mTemplateBase;
+    ChangedProperties mChangedProperties;
 };
 
 /**

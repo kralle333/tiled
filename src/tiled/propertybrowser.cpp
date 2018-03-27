@@ -68,6 +68,7 @@
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMessageBox>
+#include "changetilescalefactor.h"
 
 namespace Tiled {
 namespace Internal {
@@ -836,6 +837,9 @@ void PropertyBrowser::addTileProperties()
     addProperty(WidthProperty, QVariant::Int, tr("Width"), groupProperty)->setEnabled(false);
     addProperty(HeightProperty, QVariant::Int, tr("Height"), groupProperty)->setEnabled(false);
 
+    QtVariantProperty *scaleFactorProperty =  addProperty(TileScaleFactorProperty, QVariant::Double, tr("ScaleFactor"), groupProperty);
+    scaleFactorProperty->setEnabled(mTilesetDocument);
+
     QtVariantProperty *probabilityProperty = addProperty(TileProbabilityProperty,
                                                          QVariant::Double,
                                                          tr("Probability"),
@@ -1047,20 +1051,20 @@ QUndoCommand *PropertyBrowser::applyMapObjectValueTo(PropertyId id, const QVaria
         break;
     case FlippingProperty: {
         const int flippingFlags = val.toInt();
-        const bool flippedHorizontally = flippingFlags & 1;
-        const bool flippedVertically = flippingFlags & 2;
-
-        // You can only change one checkbox at a time
-        Cell newCell = mapObject->cell();
-        newCell.setFlippedHorizontally(flippedHorizontally);
-        newCell.setFlippedVertically(flippedVertically);
 
         MapObjectCell mapObjectCell;
         mapObjectCell.object = mapObject;
-        mapObjectCell.cell = newCell;
+        mapObjectCell.cell = mapObject->cell();
+        mapObjectCell.cell.setFlippedHorizontally(flippingFlags & 1);
+        mapObjectCell.cell.setFlippedVertically(flippingFlags & 2);
 
         command = new ChangeMapObjectCells(mMapDocument,
-                                           QVector<MapObjectCell> () << mapObjectCell);
+                                           QVector<MapObjectCell>() << mapObjectCell);
+
+        command->setText(QCoreApplication::translate("Undo Commands",
+                                                     "Flip %n Object(s)",
+                                                     nullptr,
+                                                     mMapDocument->selectedObjects().size()));
         break;
     }
     }
@@ -1287,6 +1291,11 @@ void PropertyBrowser::applyTileValue(PropertyId id, const QVariant &val)
         break;
     case TileProbabilityProperty:
         undoStack->push(new ChangeTileProbability(mTilesetDocument,
+                                                  mTilesetDocument->selectedTiles(),
+                                                  val.toFloat()));
+        break;
+    case TileScaleFactorProperty:
+        undoStack->push(new ChangeTileScaleFactor(mTilesetDocument,
                                                   mTilesetDocument->selectedTiles(),
                                                   val.toFloat()));
         break;
@@ -1675,6 +1684,7 @@ void PropertyBrowser::updateProperties()
         mIdToProperty[TypeProperty]->setValue(tile->type());
         mIdToProperty[WidthProperty]->setValue(tileSize.width());
         mIdToProperty[HeightProperty]->setValue(tileSize.height());
+        mIdToProperty[TileScaleFactorProperty]->setValue(tile->scaleFactor());
         mIdToProperty[TileProbabilityProperty]->setValue(tile->probability());
         if (QtVariantProperty *imageSourceProperty = mIdToProperty.value(ImageSourceProperty))
             imageSourceProperty->setValue(QVariant::fromValue(FilePath { tile->imageSource() }));

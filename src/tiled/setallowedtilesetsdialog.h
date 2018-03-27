@@ -41,8 +41,8 @@ public:
     ~SetAllowedTilesetsDialog();
 
     bool wasListChanged() const;
-    QVector<QString> getAllowedTilesets();
-    void populateTilesetLists(const QVector<SharedTileset> &allTileSets, const QVector<SharedTileset> &tilesetsLockedToLayer);
+    QVector<QString> getAllowedTilesets() const;
+    void populateTilesetLists(const QVector<SharedTileset> &allTileSets, const QVector<SharedTileset> &tilesetsLockedToLayer) const;
 
 private slots:
     void enableTilesets();

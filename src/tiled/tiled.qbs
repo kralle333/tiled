@@ -12,7 +12,7 @@ QtGuiApplication {
     Depends { name: "qtpropertybrowser" }
     Depends { name: "qtsingleapplication" }
     Depends { name: "ib"; condition: qbs.targetOS.contains("macos") }
-    Depends { name: "Qt"; submodules: ["core", "widgets"]; versionAtLeast: "5.6" }
+    Depends { name: "Qt"; submodules: ["core", "widgets"]; versionAtLeast: "5.5" }
 
     property bool qtcRunnable: true
     property bool macSparkleEnabled: qbs.targetOS.contains("macos") && project.sparkleEnabled
@@ -157,6 +157,8 @@ QtGuiApplication {
         "changetileobjectgroup.h",
         "changetileprobability.cpp",
         "changetileprobability.h",
+        "changetilescalefactor.cpp",
+        "changetilescalefactor.h",
         "changetileterrain.cpp",
         "changetileterrain.h",
         "changetilewangid.cpp",
@@ -584,7 +586,7 @@ QtGuiApplication {
         condition: qbs.targetOS.contains("linux")
         qbs.install: true
         qbs.installDir: "share/applications"
-        files: [ "../../tiled.desktop" ]
+        files: [ "../../org.mapeditor.Tiled.desktop" ]
     }
 
     Group {
@@ -592,7 +594,7 @@ QtGuiApplication {
         condition: qbs.targetOS.contains("linux")
         qbs.install: true
         qbs.installDir: "share/metainfo"
-        files: [ "../../tiled.appdata.xml" ]
+        files: [ "../../org.mapeditor.Tiled.appdata.xml" ]
     }
 
     Group {
@@ -608,7 +610,7 @@ QtGuiApplication {
         condition: qbs.targetOS.contains("linux")
         qbs.install: true
         qbs.installDir: "share/mime/packages"
-        files: [ "../../mime/tiled.xml" ]
+        files: [ "../../mime/org.mapeditor.Tiled.xml" ]
     }
 
     Group {

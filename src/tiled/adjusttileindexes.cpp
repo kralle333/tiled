@@ -108,7 +108,8 @@ AdjustTileIndexes::AdjustTileIndexes(MapDocument *mapDocument,
 
         case Layer::ObjectGroupType:
             for (MapObject *mapObject : *static_cast<ObjectGroup*>(layer)) {
-                if (isFromTileset(mapObject->cell())) {
+                if ((!mapObject->isTemplateInstance() || mapObject->propertyChanged(MapObject::CellProperty))
+                        && isFromTileset(mapObject->cell())) {
                     MapObjectCell change;
                     change.object = mapObject;
                     change.cell = adjustCell(mapObject->cell());
@@ -152,6 +153,8 @@ AdjustTileMetaData::AdjustTileMetaData(TilesetDocument *tilesetDocument)
     // Adjust tile meta data
     QList<Tile*> tilesChangingProbability;
     QList<qreal> tileProbabilities;
+    QList<Tile*> tilesChangingScaleFactor;
+    QList<qreal> tileScaleFactors;
     ChangeTileTerrain::Changes terrainChanges;
     QSet<Tile*> tilesToReset;
 
@@ -170,6 +173,7 @@ AdjustTileMetaData::AdjustTileMetaData(TilesetDocument *tilesetDocument)
                              const Properties &properties,
                              unsigned terrain,
                              qreal probability,
+                             qreal scaleFactor,
                              ObjectGroup *objectGroup,
                              const QVector<Frame> &frames)
     {
@@ -189,6 +193,11 @@ AdjustTileMetaData::AdjustTileMetaData(TilesetDocument *tilesetDocument)
         if (probability != toTile->probability()) {
             tilesChangingProbability.append(toTile);
             tileProbabilities.append(probability);
+        }
+        
+        if (scaleFactor != toTile->scaleFactor()){
+            tilesChangingScaleFactor.append(toTile);
+            tileScaleFactors.append(scaleFactor);
         }
 
         if (objectGroup != toTile->objectGroup())
@@ -220,6 +229,7 @@ AdjustTileMetaData::AdjustTileMetaData(TilesetDocument *tilesetDocument)
                       fromTile->properties(),
                       fromTile->terrain(),
                       fromTile->probability(),
+                      fromTile->scaleFactor(),
                       objectGroup,
                       adjustAnimationFrames(fromTile->frames()));
     };
@@ -241,7 +251,7 @@ AdjustTileMetaData::AdjustTileMetaData(TilesetDocument *tilesetDocument)
     QSetIterator<Tile*> resetIterator(tilesToReset);
     while (resetIterator.hasNext()) {
         applyMetaData(resetIterator.next(),
-                      Properties(), -1, 1.0, nullptr, QVector<Frame>());
+                      Properties(), -1, 1.0,1.0, nullptr, QVector<Frame>());
     }
 
     if (!tilesChangingProbability.isEmpty()) {
@@ -250,7 +260,6 @@ AdjustTileMetaData::AdjustTileMetaData(TilesetDocument *tilesetDocument)
                                   tileProbabilities,
                                   this);
     }
-
     if (!terrainChanges.isEmpty())
         new ChangeTileTerrain(tilesetDocument, terrainChanges, this);
 }

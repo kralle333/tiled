@@ -161,7 +161,9 @@ MapEditor::MapEditor(QObject *parent)
     , mViewWithTool(nullptr)
     , mTileStampManager(new TileStampManager(*mToolManager, this))
 {
+#if QT_VERSION >= 0x050600
     mMainWindow->setDockOptions(mMainWindow->dockOptions() | QMainWindow::GroupedDragging);
+#endif
     mMainWindow->setDockNestingEnabled(true);
     mMainWindow->setCentralWidget(mWidgetStack);
 
@@ -656,9 +658,6 @@ void MapEditor::paste(ClipboardManager::PasteFlags flags)
 
     QScopedPointer<Map> mapDeleter(map);
 
-    TilesetManager *tilesetManager = TilesetManager::instance();
-    tilesetManager->addReferences(map->tilesets());
-
     bool tilesetsUnified = false;
 
     if (flags & ClipboardManager::PasteInPlace)
@@ -692,8 +691,6 @@ void MapEditor::paste(ClipboardManager::PasteFlags flags)
 
     if (flags & ClipboardManager::PasteInPlace)
         mCurrentMapDocument->undoStack()->endMacro();
-
-    tilesetManager->removeReferences(map->tilesets());
 }
 
 void MapEditor::flip(FlipDirection direction)

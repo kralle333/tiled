@@ -176,7 +176,13 @@ static void paintCorners(QPainter *painter,
 
 static void setCosmeticPen(QPainter *painter, const QBrush &brush, qreal width)
 {
-    QPen pen(brush, width * painter->device()->devicePixelRatioF());
+#if QT_VERSION >= 0x050600
+    const qreal devicePixelRatio = painter->device()->devicePixelRatioF();
+#else
+    const int devicePixelRatio = painter->device()->devicePixelRatio();
+#endif
+
+    QPen pen(brush, width * devicePixelRatio);
     pen.setCosmetic(true);
     painter->setPen(pen);
 }
@@ -1083,7 +1089,6 @@ void TilesetView::mouseMoveEvent(QMouseEvent *event)
         const QModelIndex previousHoveredIndex = mHoveredIndex;
         mHoveredIndex = hoveredIndex;
         int previousHoverCorner = mHoveredCorner;
-        int hoveredCorner = 0;
 
         if (mHoveredIndex.isValid()) {
             const QPoint center = visualRect(hoveredIndex).center();
@@ -1091,6 +1096,7 @@ void TilesetView::mouseMoveEvent(QMouseEvent *event)
             const auto t = tilesetGridTransform(*tilesetDocument()->tileset(), center);
             const auto mappedPos = t.inverted().map(pos);
 
+            int hoveredCorner = 0;
             if (mappedPos.x() > center.x())
                 hoveredCorner += 1;
             if (mappedPos.y() > center.y())

@@ -91,7 +91,7 @@ bool SetAllowedTilesetsDialog::wasListChanged() const
     return mWasListChanged;
 }
 
-QVector<QString> SetAllowedTilesetsDialog::getAllowedTilesets()
+QVector<QString> SetAllowedTilesetsDialog::getAllowedTilesets() const
 {
     QVector<QString> allowedTilesets;
 
@@ -105,7 +105,7 @@ QVector<QString> SetAllowedTilesetsDialog::getAllowedTilesets()
     return allowedTilesets;
 }
 
-void SetAllowedTilesetsDialog::populateTilesetLists(const QVector<Tiled::SharedTileset> &allTilesets, const QVector < Tiled::SharedTileset > &tilesetsLockedToLayer)
+void SetAllowedTilesetsDialog::populateTilesetLists(const QVector<Tiled::SharedTileset> &allTilesets, const QVector < Tiled::SharedTileset > &tilesetsLockedToLayer) const
 {
     for each (SharedTileset tileset in tilesetsLockedToLayer)
     {
