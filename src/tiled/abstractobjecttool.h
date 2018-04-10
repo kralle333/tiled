@@ -67,6 +67,7 @@ protected:
     ObjectGroup *currentObjectGroup() const;
     QList<MapObject*> mapObjectsAt(const QPointF &pos) const;
     MapObject *topMostMapObjectAt(const QPointF &pos) const;
+    static bool IsAlphaZeroAt(MapObjectItem* objectItem, const QPointF& pos);
 
 private slots:
     void duplicateObjects();

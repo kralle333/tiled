@@ -164,7 +164,12 @@ QList<MapObject*> AbstractObjectTool::mapObjectsAt(const QPointF &pos) const
     for (auto item : items) {
         MapObjectItem *objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
         if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked())
+        {
+            if (IsAlphaZeroAt(objectItem, pos)) {
+                continue;
+            }
             objectList.append(objectItem->mapObject());
+        }
     }
     return objectList;
 }
@@ -177,27 +182,32 @@ MapObject *AbstractObjectTool::topMostMapObjectAt(const QPointF &pos) const
         MapObjectItem *objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
         if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked())
         {
-            Tile *mapObjectTile = objectItem->mapObject()->cell().tile();
-            if (mapObjectTile != nullptr && !mapObjectTile->imageSource().isEmpty())
+            if(IsAlphaZeroAt(objectItem,pos))
             {
-                //Only return object if object's alpha value is not 0 at the given position
-                QPixmap pixmap = mapObjectTile->image();
-                float scaleX = pixmap.width() / objectItem->mapObject()->width();
-                float scaleY = pixmap.height() / objectItem->mapObject()->height();
-                QTransform inverseTransform = objectItem->sceneTransform().inverted();
-                QPointF imageLocalPosition = inverseTransform.map(pos);
-                int x = imageLocalPosition.x()*scaleX;
-                int y = (objectItem->mapObject()->height() - -imageLocalPosition.y())*scaleY;
-
-                if (pixmap.toImage().pixel(x, y) >> 24 == 0)
-                {
-                    continue;
-                }
+                continue;
             }
             return objectItem->mapObject();
         }
     }
     return nullptr;
+}
+
+bool AbstractObjectTool::IsAlphaZeroAt(MapObjectItem *objectItem, const QPointF &pos)
+{
+    Tile* mapObjectTile = objectItem->mapObject()->cell().tile();
+    if (mapObjectTile != nullptr && !mapObjectTile->imageSource().isEmpty()) {
+        //Only return object if object's alpha value is not 0 at the given position
+        QPixmap pixmap = mapObjectTile->image();
+        const float scaleX = pixmap.width() / objectItem->mapObject()->width();
+        const float scaleY = pixmap.height() / objectItem->mapObject()->height();
+        QTransform inverseTransform = objectItem->sceneTransform().inverted();
+        QPointF imageLocalPosition = inverseTransform.map(pos);
+        const int x = imageLocalPosition.x() * scaleX;
+        const int y = (objectItem->mapObject()->height() - -imageLocalPosition.y()) * scaleY;
+
+        return pixmap.toImage().pixel(x, y) >> 24 == 0;
+    }
+    return false;
 }
 
 void AbstractObjectTool::duplicateObjects()
