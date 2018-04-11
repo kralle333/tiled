@@ -37,6 +37,7 @@ public:
     QColor transparentColor;
     QSize size;
     QByteArray format;
+    QRectF croppedRectangle;
     QByteArray data;
     LoadingStatus status;
 

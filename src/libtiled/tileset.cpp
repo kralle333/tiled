@@ -699,6 +699,7 @@ void Tileset::setTileImage(Tile *tile,
     }
 }
 
+
 void Tileset::swap(Tileset &other)
 {
     const Properties p = properties();

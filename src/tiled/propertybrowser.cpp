@@ -835,6 +835,7 @@ void PropertyBrowser::addTileProperties()
 
     addProperty(WidthProperty, QVariant::Int, tr("Width"), groupProperty)->setEnabled(false);
     addProperty(HeightProperty, QVariant::Int, tr("Height"), groupProperty)->setEnabled(false);
+    addProperty(CropProperty, QVariant::RectF, tr("CroppedBounds"), groupProperty)->setEnabled(false);
 
     QtVariantProperty *probabilityProperty = addProperty(TileProbabilityProperty,
                                                          QVariant::Double,
@@ -1675,6 +1676,7 @@ void PropertyBrowser::updateProperties()
         mIdToProperty[TypeProperty]->setValue(tile->type());
         mIdToProperty[WidthProperty]->setValue(tileSize.width());
         mIdToProperty[HeightProperty]->setValue(tileSize.height());
+        mIdToProperty[CropProperty]->setValue(tile->croppedRectangle());
         mIdToProperty[TileProbabilityProperty]->setValue(tile->probability());
         if (QtVariantProperty *imageSourceProperty = mIdToProperty.value(ImageSourceProperty))
             imageSourceProperty->setValue(QVariant::fromValue(FilePath { tile->imageSource() }));

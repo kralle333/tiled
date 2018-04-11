@@ -106,6 +106,7 @@ private slots:
     void updateTilesetView(Tileset *tileset);
 
     void openAddTilesDialog();
+    void generateCroppedRectangles();
     void addTiles(const QList<QUrl> &urls);
     void removeTiles();
 
@@ -147,6 +148,7 @@ private:
     QAction *mAddTiles;
     QAction *mRemoveTiles;
     QAction *mShowAnimationEditor;
+    QAction *mGenerateCroppedBounds;
 
     PropertiesDock *mPropertiesDock;
     UndoDock *mUndoDock;

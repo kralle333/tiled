@@ -1135,11 +1135,28 @@ void ObjectSelectionTool::updateSelection(const QPointF &pos,
 
     QList<MapObject*> selectedObjects;
 
-    const QList<QGraphicsItem *> &items = mapScene()->items(rect);
-    for (QGraphicsItem *item : items) {
-        MapObjectItem *mapObjectItem = qgraphicsitem_cast<MapObjectItem*>(item);
+    const QList<QGraphicsItem *>& items = mapScene()->items(rect);
+    for (QGraphicsItem* item : items)
+    {
+        MapObjectItem* mapObjectItem = qgraphicsitem_cast<MapObjectItem*>(item);
         if (mapObjectItem && mapObjectItem->mapObject()->objectGroup()->isUnlocked())
+        {
+            if (mapObjectItem->mapObject()->isTileObject())
+            {
+                Tile* tile = mapObjectItem->mapObject()->cell().tile();
+                QRectF croppedRect = tile->croppedRectangle();
+                const float scaleX = mapObjectItem->mapObject()->width() / tile->image().width();
+                const float scaleY = mapObjectItem->mapObject()->height() / tile->image().height();
+                croppedRect = QRectF(croppedRect.x() * scaleX, croppedRect.y(), scaleX * croppedRect.width(), scaleY * (croppedRect.height()));
+                croppedRect = mapObjectItem->sceneTransform().mapRect(croppedRect);
+                croppedRect.translate(0, -mapObjectItem->mapObject()->height());
+                if (!croppedRect.intersects(rect))
+                {
+                    continue;
+                }
+            }
             selectedObjects.append(mapObjectItem->mapObject());
+        }
     }
 
     if (modifiers & (Qt::ControlModifier | Qt::ShiftModifier)) {

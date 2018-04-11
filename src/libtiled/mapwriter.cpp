@@ -421,6 +421,14 @@ void MapWriterPrivate::writeTileset(QXmlStreamWriter &w, const Tileset &tileset,
                     w.writeAttribute(QLatin1String("height"),
                                      QString::number(tileSize.height()));
                 }
+                w.writeAttribute(QLatin1String("croppedboundsx"),
+                                    QString::number(tile->croppedRectangle().x()));
+                w.writeAttribute(QLatin1String("croppedboundsy"),
+                                    QString::number(tile->croppedRectangle().y()));
+                w.writeAttribute(QLatin1String("croppedboundswidth"),
+                                 QString::number(tile->croppedRectangle().width()));
+                w.writeAttribute(QLatin1String("croppedboundsheight"),
+                                 QString::number(tile->croppedRectangle().height()));
 
                 if (tile->imageSource().isEmpty()) {
                     w.writeAttribute(QLatin1String("format"),

@@ -122,6 +122,7 @@ private:
         YProperty,
         WidthProperty,
         HeightProperty,
+        CropProperty,
         RotationProperty,
         VisibleProperty,
         LockedProperty,

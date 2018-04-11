@@ -470,10 +470,11 @@ void MapReaderPrivate::readTilesetTile(Tileset &tileset)
                     if (imageReference.source.isEmpty())
                         xml.raiseError(tr("Error reading embedded image for tile %1").arg(id));
                 }
+                tile->setCroppedRectangle(imageReference.croppedRectangle);
                 tileset.setTileImage(tile, QPixmap::fromImage(image),
                                      imageReference.source);
             }
-        } else if (xml.name() == QLatin1String("objectgroup")) {
+        }else if (xml.name() == QLatin1String("objectgroup")) {
             ObjectGroup *objectGroup = readObjectGroup();
             if (objectGroup) {
                 // Migrate properties from the object group to the tile. Since
@@ -564,6 +565,13 @@ ImageReference MapReaderPrivate::readImage()
         if (QColor::isValidColor(trans))
             image.transparentColor = QColor(trans);
     }
+
+    QRectF croppedRectangle(0, 0, 0, 0);
+    croppedRectangle.setX(atts.hasAttribute(QLatin1String("croppedboundsx")) ? atts.value(QLatin1String("croppedboundsx")).toFloat() : 0.0f);
+    croppedRectangle.setY(atts.hasAttribute(QLatin1String("croppedboundsy")) ? atts.value(QLatin1String("croppedboundsy")).toFloat() : 0.0f);
+    croppedRectangle.setWidth(atts.hasAttribute(QLatin1String("croppedboundswidth")) ? atts.value(QLatin1String("croppedboundswidth")).toFloat() : image.size.width());
+    croppedRectangle.setHeight(atts.hasAttribute(QLatin1String("croppedboundsheight")) ? atts.value(QLatin1String("croppedboundsheight")).toFloat() : image.size.height());
+    image.croppedRectangle = croppedRectangle;
 
     if (image.source.isEmpty()) {
         while (xml.readNextStartElement()) {
