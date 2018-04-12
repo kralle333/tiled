@@ -65,10 +65,11 @@
 #include <QSettings>
 #include <QStackedWidget>
 #include <QStatusBar>
-
+#include <QProgressDialog>
+#include <QDebug>
+#include <QApplication>
 #include <functional>
 
-#include <QDebug>
 
 static const char SIZE_KEY[] = "TilesetEditor/Size";
 static const char STATE_KEY[] = "TilesetEditor/State";
@@ -643,8 +644,16 @@ void TilesetEditor::generateCroppedRectangles()
     if (!tileset)
         return;
 
-    QRectF croppedBounds(0, 0, 0, 0);
 
+
+    int length = tileset->tiles().size();
+    QProgressDialog progress(QLatin1String("Generating Cropped Rectangles..."), QLatin1String("Abort Cropping"), 0, length);
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setValue(0);
+    progress.show();
+
+    QRectF croppedBounds(0, 0, 0, 0);
+    int i = 0;
     for (Tile* element : tileset->tiles())
     {
         const QPixmap tilePixmap = element->image();
@@ -690,8 +699,10 @@ void TilesetEditor::generateCroppedRectangles()
                 }
             }
         }
-
         element->setCroppedRectangle(croppedBounds);
+        i++;
+        progress.setValue(i);
+        QApplication::processEvents();
     }
     saveState();
 }
