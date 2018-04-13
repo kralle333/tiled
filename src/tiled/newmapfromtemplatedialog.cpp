@@ -30,6 +30,7 @@
 
 #include <QFileDialog>
 #include <QMessageBox>
+#include "documentmanager.h"
 
 using namespace Tiled;
 using namespace Tiled::Internal;
@@ -42,10 +43,19 @@ NewMapFromTemplateDialog::NewMapFromTemplateDialog(QWidget *parent) :
 	mUi->setupUi(this);
 	setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
-	mUi->buttonBox->button(QDialogButtonBox::Save)->setText(tr("Save As..."));
 	connect(mUi->browseButton, SIGNAL(clicked()), SLOT(openFile()));
-	connect(mUi->overrideSize, SIGNAL(toggled(bool)), SLOT(updateWidgets(bool)));
-	updateWidgets(false);
+	connect(mUi->overrideSize, SIGNAL(toggled(bool)), SLOT(updateMapSizeWidgets(bool)));
+    connect(mUi->openedFileRadioButton, SIGNAL(toggled(bool)), SLOT(updateMapFileWidgets(bool)));
+    connect(mUi->openfilesComboBox, SIGNAL(currentIndexChanged(int)), SLOT(comboBoxIndexChanged(int)));
+	updateMapSizeWidgets(false);
+    updateMapFileWidgets(true);
+    
+    for(auto document : DocumentManager::instance()->documents())
+    {
+        if(document->type() == Document::MapDocumentType)
+            mUi->openfilesComboBox->addItem(document->displayName());
+    }
+    comboBoxIndexChanged(0);
 }
 
 NewMapFromTemplateDialog::~NewMapFromTemplateDialog()
@@ -56,21 +66,21 @@ NewMapFromTemplateDialog::~NewMapFromTemplateDialog()
 
 void NewMapFromTemplateDialog::openFile()
 {
-	TmxMapFormat tmxp;
+    TmxMapFormat tmxp;
+    QString filter = tmxp.nameFilter();
+    FormatHelper<FileFormat> helper(FileFormat::Read, filter);
 
-	QString filter = tmxp.nameFilter();
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Map File Template"),
+                                                    Preferences::instance()->fileDialogStartLocation(), filter);
+    
 
-	FormatHelper<FileFormat> helper(FileFormat::Read, filter);
 
-	auto preferences = Preferences::instance();
-	QString f = QFileDialog::getOpenFileName(this, tr("Map File Template"), preferences->fileDialogStartLocation(), filter);
-
-	if (!f.isEmpty()) {
-		if (f != mPath)
+	if (!fileName.isEmpty()) {
+		if (fileName != mPath)
 		{
-			mUi->mappath->setText(f);
-			mPath = f;
-			mMap = tmxp.read(f);
+			mUi->mappath->setText(fileName);
+			mPath = fileName;
+			mMap = tmxp.read(fileName);
 			mUi->mapWidth->setValue(mMap->width());
 			mUi->mapHeight->setValue(mMap->height());
 		}
@@ -102,56 +112,21 @@ void NewMapFromTemplateDialog::eraseLayerContents(const QList<Layer*> &layers)
 
 }
 
-bool NewMapFromTemplateDialog::openFile(const QString &fileName, FileFormat *fileFormat)
+void NewMapFromTemplateDialog::comboBoxIndexChanged(int i)
 {
-	/*if (fileName.isEmpty())
-		return false;
-
-
-	if (!fileFormat) {
-		// Try to find a plugin that implements support for this format
-		const auto formats = PluginManager::objects<FileFormat>();
-		for (FileFormat *format : formats) {
-			if (format->supportsFile(fileName)) {
-				fileFormat = format;
-				break;
-			}
-		}
-	}
-
-	if (!fileFormat) {
-		QMessageBox::critical(this, tr("Error Opening File"), tr("Unrecognized file format."));
-		return false;
-	}
-
-	QString error;
-	Document *document = nullptr;
-
-	if (MapFormat *mapFormat = qobject_cast<MapFormat*>(fileFormat)) {
-		document = MapDocument::load(fileName, mapFormat, &error);
-	}
-	else if (TilesetFormat *tilesetFormat = qobject_cast<TilesetFormat*>(fileFormat)) {
-		// It could be, that we have already loaded this tileset while loading some map.
-		if (TilesetDocument *tilesetDocument = mDocumentManager->findTilesetDocument(fileName)) {
-			document = tilesetDocument;
-		}
-		else {
-			document = TilesetDocument::load(fileName, tilesetFormat, &error);
-		}
-	}
-
-	if (!document) {
-		QMessageBox::critical(this, tr("Error Opening File"), error);
-		return false;
-	}
-
-	mDocumentManager->addDocument(document);
-
-	if (MapDocument *mapDocument = qobject_cast<MapDocument*>(document))
-		mDocumentManager->checkTilesetColumns(mapDocument);
-
-	Preferences::instance()->addRecentFile(fileName);*/
-	return true;
+    Document *selectedDocument = DocumentManager::instance()->documents().at(i);
+    QString fileName = selectedDocument->fileName();
+    if (fileName != mPath) {
+        TmxMapFormat tmxp;
+        mUi->mappath->setText(fileName);
+        mPath = fileName;
+        mMap = tmxp.read(fileName);
+        if(mMap != nullptr)
+        {            
+            mUi->mapWidth->setValue(mMap->width());
+            mUi->mapHeight->setValue(mMap->height());
+        }
+    }
 }
 
 MapDocument *NewMapFromTemplateDialog::createMap()
@@ -174,8 +149,14 @@ MapDocument *NewMapFromTemplateDialog::createMap()
 	newDocument->resizeMap(newSize, offset, false);
 	return newDocument;
 }
+void NewMapFromTemplateDialog::updateMapFileWidgets(bool checked)
+{
+    mUi->browseButton->setEnabled(!checked);
+    mUi->mappath->setEnabled(!checked);
+    mUi->openfilesComboBox->setEnabled(checked);
+}
 
-void NewMapFromTemplateDialog::updateWidgets(bool checked)
+void NewMapFromTemplateDialog::updateMapSizeWidgets(bool checked)
 {
 	mUi->mapHeight->setEnabled(checked);
 	mUi->mapWidth->setEnabled(checked);
