@@ -214,6 +214,8 @@ public:
     void setRotation(qreal rotation);
 
     Alignment alignment() const;
+    float scaleX();
+    float scaleY();
 
     bool isVisible() const;
     void setVisible(bool visible);
@@ -356,6 +358,7 @@ inline const QSizeF &MapObject::size() const
  */
 inline void MapObject::setSize(const QSizeF &size)
 { mSize = size; }
+
 
 inline void MapObject::setSize(qreal width, qreal height)
 { setSize(QSizeF(width, height)); }

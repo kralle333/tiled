@@ -54,7 +54,6 @@
 #include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
-#include <QCoreApplication>
 #include <QDropEvent>
 #include <QFileDialog>
 #include <QFileInfo>
