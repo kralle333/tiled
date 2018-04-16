@@ -66,6 +66,7 @@ public:
      * Constructor.
      */
     Layer(TypeFlag type, const QString &name, int x, int y);
+    ~Layer();
 
     /**
      * Returns the type of this layer.

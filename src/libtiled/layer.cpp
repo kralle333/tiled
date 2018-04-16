@@ -53,6 +53,11 @@ Layer::Layer(TypeFlag type, const QString &name, int x, int y) :
 {
 }
 
+Layer::~Layer()
+{
+    mAllowedTilesets.clear();
+}
+
 /**
  * Returns the effective opacity, which is the opacity multiplied by the
  * opacity of any parent layers.
