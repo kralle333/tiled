@@ -65,7 +65,6 @@ TilesetManager::TilesetManager():
 
 TilesetManager::~TilesetManager()
 {
-    qDebug() << "Deleting Tileset Manager";
     // Assert that there are no remaining tileset instances
     Q_ASSERT(mTilesets.isEmpty());
 }
