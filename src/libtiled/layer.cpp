@@ -55,7 +55,10 @@ Layer::Layer(TypeFlag type, const QString &name, int x, int y) :
 
 Layer::~Layer()
 {
-    mAllowedTilesets.clear();
+    for (int i = mAllowedTilesets.count()-1; i>=0; i--)
+    {
+        mAllowedTilesets.remove(i);        
+    }
 }
 
 /**

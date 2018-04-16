@@ -670,9 +670,6 @@ void MainWindow::newMapFromTemplate()
     if (!mapDocument)
         return;
 
-    if (!mDocumentManager->saveDocumentAs(mapDocument.data()))
-        return;
-
     mDocumentManager->addDocument(mapDocument.take());
 }
 bool MainWindow::openFile(const QString &fileName, FileFormat *fileFormat)

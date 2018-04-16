@@ -35,7 +35,7 @@
 #include "tilesetformat.h"
 
 #include <QImage>
-
+#include <QDebug>
 #include "qtcompat_p.h"
 
 namespace Tiled {
@@ -65,6 +65,7 @@ TilesetManager::TilesetManager():
 
 TilesetManager::~TilesetManager()
 {
+    qDebug() << "Deleting Tileset Manager";
     // Assert that there are no remaining tileset instances
     Q_ASSERT(mTilesets.isEmpty());
 }

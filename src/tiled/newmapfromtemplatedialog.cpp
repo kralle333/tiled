@@ -46,7 +46,7 @@ NewMapFromTemplateDialog::NewMapFromTemplateDialog(QWidget *parent) :
 	connect(mUi->browseButton, SIGNAL(clicked()), SLOT(openFile()));
 	connect(mUi->overrideSize, SIGNAL(toggled(bool)), SLOT(updateMapSizeWidgets(bool)));
     connect(mUi->openedFileRadioButton, SIGNAL(toggled(bool)), SLOT(updateMapFileWidgets(bool)));
-    connect(mUi->openfilesComboBox, SIGNAL(currentIndexChanged(int)), SLOT(comboBoxIndexChanged(int)));
+    connect(mUi->openfilesComboBox, SIGNAL(currentIndexChanged(QString)), SLOT(comboBoxIndexChanged(QString)));
 	updateMapSizeWidgets(false);
     updateMapFileWidgets(true);
     
@@ -55,7 +55,6 @@ NewMapFromTemplateDialog::NewMapFromTemplateDialog(QWidget *parent) :
         if(document->type() == Document::MapDocumentType)
             mUi->openfilesComboBox->addItem(document->displayName());
     }
-    comboBoxIndexChanged(0);
 }
 
 NewMapFromTemplateDialog::~NewMapFromTemplateDialog()
@@ -112,10 +111,20 @@ void NewMapFromTemplateDialog::eraseLayerContents(const QList<Layer*> &layers)
 
 }
 
-void NewMapFromTemplateDialog::comboBoxIndexChanged(int i)
+void NewMapFromTemplateDialog::comboBoxIndexChanged(const QString &text)
 {
-    Document *selectedDocument = DocumentManager::instance()->documents().at(i);
-    QString fileName = selectedDocument->fileName();
+    Document *selectedDocument = nullptr;
+    for (Document* const document : DocumentManager::instance()->documents())
+    {
+        if (document->displayName() == text)
+        {
+            selectedDocument = document;
+            break;            
+        }
+    }
+    Q_ASSERT(selectedDocument != nullptr);
+
+    const QString fileName = selectedDocument->fileName();
     if (fileName != mPath) {
         TmxMapFormat tmxp;
         mUi->mappath->setText(fileName);

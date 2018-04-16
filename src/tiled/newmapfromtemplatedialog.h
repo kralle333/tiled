@@ -53,7 +53,7 @@ namespace Tiled {
 			void eraseLayerContents(const QList<Layer*> &layers);
             void openFile();
 
-            void comboBoxIndexChanged(int i);
+            void comboBoxIndexChanged(const QString &text);
             void updateMapFileWidgets(bool checked);
 			void updateMapSizeWidgets(bool checked);
 
