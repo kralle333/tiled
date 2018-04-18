@@ -39,8 +39,9 @@
 class QDir;
 
 namespace Tiled {
+    class Object;
 
-struct FilePath {
+    struct FilePath {
     QUrl url;
 };
 
@@ -54,6 +55,8 @@ public:
 
     QJsonArray toJson() const;
     static Properties fromJson(const QJsonArray &json);
+    static QMap<QString, QStringList> getEnums(Object* propertyObject);
+    static QStringList getEnumsWithName(Object* propertyObject, QString name);
 };
 
 class TILEDSHARED_EXPORT AggregatedPropertyData
@@ -86,6 +89,8 @@ public:
                 mPresenceCount == other.mPresenceCount &&
                 mValueConsistent == other.mValueConsistent;
     }
+
+
 
 private:
     QVariant mValue;

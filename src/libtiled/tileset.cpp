@@ -608,6 +608,14 @@ WangSet *Tileset::takeWangSetAt(int index)
     return mWangSets.takeAt(index);
 }
 
+void Tileset::addEnum(QString enumName, QStringList enumValues)
+{
+    if(!mEnums.contains(enumName))
+    {
+        mEnums[enumName] = enumValues;
+    }
+}
+
 /**
  * Adds a new tile to the end of the tileset.
  */

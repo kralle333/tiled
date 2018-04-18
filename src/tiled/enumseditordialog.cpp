@@ -1,7 +1,6 @@
 /*
-* aboutdialog.h
-* Copyright 2008-2009, Thorbjørn Lindeijer <thorbjorn@lindeijer.nl>
-* Copyright 2009, Dennis Honeyman <arcticuno@gmail.com>
+* enumseditordialog.cpp
+* Copyright 2018, Kristian Pilegaard Jensen <kralle@gmail.com>
 *
 * This file is part of Tiled.
 *
@@ -19,24 +18,26 @@
 * this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "enumseditordialog.h"
 
-#include <QDialog>
-#include "ui_aboutdialog.h"
+using namespace Tiled::Internal;
 
-namespace Tiled {
-namespace Internal {
-
-class AboutDialog : public QDialog, private Ui::AboutDialog
+EnumsEditorDialog::EnumsEditorDialog(QWidget *parent) :
+    QDialog(parent),
+    mUi(new Ui::EnumsEditorDialog)
 {
-    Q_OBJECT
+    mUi->setupUi(this);
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    
+}
 
-public:
-    AboutDialog(QWidget *parent = nullptr);
 
-    private slots:
-    void donate();
-};
+void EnumsEditorDialog::ShowEnums(QMap<QString,QStringList> enums)
+{
+    mEnums = enums;
 
-} // namespace Internal
-} // namespace Tiled
+    for (auto enumPairs : enums.toStdMap())
+    {
+        mUi->enumsList->addItem(enumPairs.first);
+    }
+}

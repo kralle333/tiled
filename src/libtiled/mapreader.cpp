@@ -89,6 +89,7 @@ private:
     void readTilesetImage(Tileset &tileset);
     void readTilesetTerrainTypes(Tileset &tileset);
     void readTilesetWangSets(Tileset &tileset);
+    void readEnums(Tileset& tileset);
     ImageReference readImage();
 
     ObjectTemplate *readObjectTemplate();
@@ -400,6 +401,8 @@ SharedTileset MapReaderPrivate::readTileset()
                     readTilesetTerrainTypes(*tileset);
                 } else if (xml.name() == QLatin1String("wangsets")) {
                     readTilesetWangSets(*tileset);
+                } else if (xml.name() == QLatin1String("enums")) {
+                    readEnums(*tileset);
                 } else {
                     readUnknownElement();
                 }
@@ -716,6 +719,22 @@ void MapReaderPrivate::readTilesetWangSets(Tileset &tileset)
             }
         } else {
             readUnknownElement();
+        }
+    }
+}
+
+void MapReaderPrivate::readEnums(Tileset &tileset)
+{
+    Q_ASSERT(xml.isStartElement() && xml.name() == QLatin1String("enums"));
+
+    while (xml.readNextStartElement())
+    {
+        if (xml.name() == QLatin1String("enum"))
+        {
+            const QXmlStreamAttributes enumAtts = xml.attributes();
+            const QString name = enumAtts.value(QLatin1String("name")).toString();
+            QString enumValues = enumAtts.value((QLatin1String("values"))).toString();
+            tileset.addEnum(name, enumValues.split(QLatin1String(",")));
         }
     }
 }

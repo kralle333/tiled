@@ -107,6 +107,7 @@ private slots:
 
     void openAddTilesDialog();
     void generateCroppedRectangles();
+    void editEnumerations();
     void addTiles(const QList<QUrl> &urls);
     void removeTiles();
 
@@ -149,6 +150,7 @@ private:
     QAction *mRemoveTiles;
     QAction *mShowAnimationEditor;
     QAction *mGenerateCroppedBounds;
+    QAction *mEnumerationEditor;
 
     PropertiesDock *mPropertiesDock;
     UndoDock *mUndoDock;

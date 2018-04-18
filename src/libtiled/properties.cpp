@@ -32,6 +32,8 @@
 
 #include <QColor>
 #include <QJsonObject>
+#include "object.h"
+#include "mapobject.h"
 
 namespace Tiled {
 
@@ -109,6 +111,40 @@ int filePathTypeId()
     return qMetaTypeId<FilePath>();
 }
 
+QMap<QString, QStringList> Properties::getEnums(Object* propertyObject)
+{
+    QMap<QString, QStringList> enums;
+    if (propertyObject) {
+        switch (propertyObject->typeId()) {
+        case Object::MapObjectType:
+        {
+            MapObject *mapObject = static_cast<MapObject*>(propertyObject);
+            enums = mapObject->cell().tileset()->enums();
+            break;
+        }
+        case Object::TileType:
+        {
+            Tile *tileObject = static_cast<Tile*>(propertyObject);
+            enums = tileObject->tileset()->enums();
+            break;
+        }
+        default: //Unsupported type 
+            break;
+        }
+    }
+    return enums;
+}
+
+QStringList Properties::getEnumsWithName(Object* propertyObject, QString name)
+{
+    auto enums = getEnums(propertyObject);
+    if(enums.contains(name))
+    {
+        return enums[name];
+    }
+    return QStringList();
+}
+
 QString typeToName(int type)
 {
     switch (type) {
@@ -118,6 +154,8 @@ QString typeToName(int type)
         return QStringLiteral("float");
     case QVariant::Color:
         return QStringLiteral("color");
+    case QVariant::StringList:
+        return QStringLiteral("stringlist");
     default:
         if (type == filePathTypeId())
             return QStringLiteral("file");
@@ -133,6 +171,8 @@ int nameToType(const QString &name)
         return QVariant::Double;
     if (name == QLatin1String("color"))
         return QVariant::Color;
+    if (name == QLatin1String("stringlist"))
+        return QVariant::StringList;
     if (name == QLatin1String("file"))
         return filePathTypeId();
 

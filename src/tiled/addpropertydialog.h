@@ -23,6 +23,7 @@
 
 #include <QDialog>
 #include <QVariant>
+#include "object.h"
 
 namespace Ui {
 class AddPropertyDialog;
@@ -33,10 +34,11 @@ class AddPropertyDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit AddPropertyDialog(QWidget *parent = nullptr);
+    explicit AddPropertyDialog(QWidget* parent = nullptr, Tiled::Object* propertyObject = nullptr);
     ~AddPropertyDialog();
 
     QString propertyName() const;
+    QVariant propertyType() const;
     QVariant propertyValue() const;
 
 private slots:

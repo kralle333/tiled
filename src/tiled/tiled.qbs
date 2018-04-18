@@ -211,6 +211,7 @@ QtGuiApplication {
         "editor.h",
         "editpolygontool.cpp",
         "editpolygontool.h",
+		"enumseditordialog.ui",
         "eraser.cpp",
         "eraser.h",
         "erasetiles.cpp",

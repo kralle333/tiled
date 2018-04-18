@@ -470,7 +470,27 @@ void MapWriterPrivate::writeTileset(QXmlStreamWriter &w, const Tileset &tileset,
             w.writeEndElement(); // </tile>
         }
     }
-
+    if (tileset.enumCount() > 0)
+    {
+        w.writeStartElement(QLatin1String("enums"));
+        for (auto tilesetEnum : tileset.enums().toStdMap())
+        {
+            w.writeStartElement(QLatin1String("enum"));
+            w.writeAttribute(QLatin1String("name"), tilesetEnum.first);
+            QString values = QLatin1String("");
+            for (int i = 0; i < tilesetEnum.second.count(); i++)
+            {
+                if (i != 0)
+                {
+                    values.append(QLatin1String(","));
+                }
+                values.append(tilesetEnum.second.at(i));
+            }
+            w.writeAttribute(QLatin1String("values"), values);
+            w.writeEndElement();
+        }
+        w.writeEndElement();
+    }
     // Write the wangsets
     if (tileset.wangSetCount() > 0) {
         w.writeStartElement(QLatin1String("wangsets"));

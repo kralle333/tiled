@@ -137,6 +137,8 @@ public:
     Tile *tileAt(int id) const { return findTile(id); } // provided for Python
     Tile *findOrCreateTile(int id);
     int tileCount() const;
+    int enumCount() const;
+    const QMap<QString, QStringList> enums() const;
 
     int columnCount() const;
     int rowCount() const;
@@ -189,6 +191,7 @@ public:
     void addWangSet(WangSet *wangSet);
     void insertWangSet(int index, WangSet *wangSet);
     WangSet *takeWangSetAt(int index);
+    void addEnum(QString enumName, QStringList enumValues);
 
     Tile *addTile(const QPixmap &image, const QUrl &source = QUrl());
     void addTiles(const QList<Tile*> &tiles);
@@ -259,7 +262,7 @@ private:
     LoadingStatus mStatus;
     QColor mBackgroundColor;
     QPointer<TilesetFormat> mFormat;
-
+    QMap<QString,QStringList> mEnums;
     QWeakPointer<Tileset> mWeakPointer;
 };
 
@@ -421,6 +424,18 @@ inline int Tileset::tileCount() const
 {
     return mTiles.size();
 }
+
+inline int Tileset::enumCount() const
+{
+    return mEnums.count();
+}
+
+inline const QMap<QString, QStringList> Tileset::enums() const
+{    
+    return mEnums;
+}
+
+
 
 /**
  * Returns the number of tile columns in the tileset image.
