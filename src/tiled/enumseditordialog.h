@@ -35,11 +35,23 @@ class EnumsEditorDialog : public QDialog
 
 public:
     EnumsEditorDialog(QWidget *parent = nullptr);
-    void ShowEnums(QMap<QString, QStringList> enums);
+    ~EnumsEditorDialog();
+    void setEnums(QMap<QString, QStringList> enums);
+    bool wereEnumsChanged();
+    QMap<QString, QStringList> getEnums();
 
+private slots:
+    void removeEnumButtonClicked();
+    void addEnumButtonClicked();
+    void removeEnumValueButtonClicked();
+    void addEnumValueButtonClicked();
+    void currentItemChanged(QListWidgetItem* previous, QListWidgetItem* current);
 private:
-        Ui::EnumsEditorDialog *mUi;
-        QMap<QString, QStringList> mEnums;
+    QString selectedItemText();
+    QListWidgetItem* selectedItem();
+    bool mEnumsWereChanged;
+    Ui::EnumsEditorDialog *mUi;
+    QMap<QString, QStringList> mEnums;
 };
 
 } // namespace Internal

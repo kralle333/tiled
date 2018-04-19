@@ -46,14 +46,14 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
-         <widget class="QPushButton" name="removeButton">
+         <widget class="QPushButton" name="removeEnumValueButton">
           <property name="text">
            <string>-</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="addButton">
+         <widget class="QPushButton" name="addEnumValueButton">
           <property name="text">
            <string>+</string>
           </property>
@@ -82,14 +82,14 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
         <item>
-         <widget class="QPushButton" name="removeButton_2">
+         <widget class="QPushButton" name="removeEnumButton">
           <property name="text">
            <string>-</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="addButton_2">
+         <widget class="QPushButton" name="addEnumButton">
           <property name="text">
            <string>+</string>
           </property>

@@ -41,6 +41,7 @@
 #include "tileanimationeditor.h"
 #include "tilecollisiondock.h"
 #include "tilelayer.h"
+#include "tileset.h"
 #include "tilesetdocument.h"
 #include "tilesetmanager.h"
 #include "tilesetmodel.h"
@@ -714,8 +715,13 @@ void TilesetEditor::generateCroppedRectangles()
 
 void TilesetEditor::editEnumerations()
 {
-    //QScopedPointer<EnumsEditorDialog> dialog(new EnumsEditorDialog);
-    //int result = dialog->exec();
+    QScopedPointer<EnumsEditorDialog> dialog(new EnumsEditorDialog);
+    dialog->setEnums(currentTileset()->enums());
+    int result = dialog->exec();
+    if(result == QDialog::Accepted && dialog->wereEnumsChanged())
+    {
+        currentTileset()->setEnums(dialog->getEnums());
+    }
 }
 
 void TilesetEditor::addTiles(const QList<QUrl> &urls)

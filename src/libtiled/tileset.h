@@ -192,6 +192,7 @@ public:
     void insertWangSet(int index, WangSet *wangSet);
     WangSet *takeWangSetAt(int index);
     void addEnum(QString enumName, QStringList enumValues);
+    void setEnums(QMap<QString, QStringList> enums);
 
     Tile *addTile(const QPixmap &image, const QUrl &source = QUrl());
     void addTiles(const QList<Tile*> &tiles);
