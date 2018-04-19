@@ -1061,24 +1061,25 @@ void TilesetDock::refreshTilesetMenu()
         if (i == currentIndex)
             action->setChecked(true);
     }
-    if (mOnlyShowAllowedTilesets)
-    {
-        const int tabCount = mTabBar->count();
-        for (int i = 0; i < tabCount/2; ++i)
-        {
-            for (int j = tabCount - 1; i < j; --j)
-            {
-                if (!mTabBar->isTabEnabled(i) && mTabBar->isTabEnabled(j))
-                {
-                    mTabBar->moveTab(j, i);
-                }
-            }
-        }
-        if(!mTabBar->isTabEnabled(mTabBar->currentIndex()))
-        {
-            mTabBar->setCurrentIndex(0);  
-        }
-    }
+    //Sorting of tabs disabled for now as the tab index is used for indexing in document and tileset lists
+    //if (mOnlyShowAllowedTilesets)
+    //{
+    //    const int tabCount = mTabBar->count();
+    //    for (int i = 0; i < tabCount/2; ++i)
+    //    {
+    //        for (int j = tabCount - 1; i < j; --j)
+    //        {
+    //            if (!mTabBar->isTabEnabled(i) && mTabBar->isTabEnabled(j))
+    //            {
+    //                mTabBar->moveTab(j, i);
+    //            }
+    //        }
+    //    }
+    //    if(!mTabBar->isTabEnabled(mTabBar->currentIndex()))
+    //    {
+    //        mTabBar->setCurrentIndex(0);  
+    //    }
+    //}
 }
 
 void TilesetDock::swapTiles(Tile *tileA, Tile *tileB)
