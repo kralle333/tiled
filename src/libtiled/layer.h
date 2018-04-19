@@ -191,6 +191,11 @@ public:
 
     bool canUseTileSet(const SharedTileset tileset) const;
 
+    void tryFixAllowedTilesetBrokenLink(const SharedTileset tileset);
+    const int allowedTilesetsCount() const
+    {
+        return mAllowedTilesets.count();
+    }
     inline const QVector<SharedTileset> getAllowedTilesets() const
     {
         return mAllowedTilesets;
