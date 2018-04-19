@@ -191,7 +191,7 @@ public:
 
     bool canUseTileSet(const SharedTileset tileset) const;
 
-    void tryFixAllowedTilesetBrokenLink(const SharedTileset tileset);
+    void tryFixAllowedTilesetBrokenLink(SharedTileset tileset);
     const int allowedTilesetsCount() const
     {
         return mAllowedTilesets.count();
