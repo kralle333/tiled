@@ -66,6 +66,7 @@ public:
      * Constructor.
      */
     Layer(TypeFlag type, const QString &name, int x, int y);
+    ~Layer();
 
     /**
      * Returns the type of this layer.
@@ -190,6 +191,11 @@ public:
 
     bool canUseTileSet(const SharedTileset tileset) const;
 
+    void tryFixAllowedTilesetBrokenLink(SharedTileset tileset);
+    const int allowedTilesetsCount() const
+    {
+        return mAllowedTilesets.count();
+    }
     inline const QVector<SharedTileset> getAllowedTilesets() const
     {
         return mAllowedTilesets;

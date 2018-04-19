@@ -35,7 +35,7 @@
 #include "tilesetformat.h"
 
 #include <QImage>
-
+#include <QDebug>
 #include "qtcompat_p.h"
 
 namespace Tiled {

@@ -43,18 +43,19 @@ namespace Tiled {
 		public:
 			NewMapFromTemplateDialog(QWidget *parent = nullptr);
 			virtual ~NewMapFromTemplateDialog();
-			/**
+		    /**
 			* Shows the dialog and returns the created map. Returns null if the dialog
 			* was cancelled.
 			*/
 			MapDocument *createMap();
 
-			private slots:
+		private slots:
 			void eraseLayerContents(const QList<Layer*> &layers);
-			void openFile();
-			bool openFile(const QString &fileName, FileFormat *fileFormat);
+            void openFile();
 
-			void updateWidgets(bool checked);
+            void comboBoxIndexChanged(const QString &text);
+            void updateMapFileWidgets(bool checked);
+			void updateMapSizeWidgets(bool checked);
 
 		private:
 			QString mPath;

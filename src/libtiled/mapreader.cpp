@@ -473,11 +473,26 @@ void MapReaderPrivate::readTilesetTile(Tileset &tileset)
                     if (imageReference.source.isEmpty())
                         xml.raiseError(tr("Error reading embedded image for tile %1").arg(id));
                 }
+                tile->setCroppedRectangle(imageReference.croppedRectangle);
                 tileset.setTileImage(tile, QPixmap::fromImage(image),
                                      imageReference.source);
             }
-        } else if (xml.name() == QLatin1String("objectgroup")) {
-            tile->setObjectGroup(readObjectGroup());
+        }else if (xml.name() == QLatin1String("objectgroup")) {
+            ObjectGroup *objectGroup = readObjectGroup();
+            if (objectGroup) {
+                // Migrate properties from the object group to the tile. Since
+                // Tiled 1.1, it is no longer possible to edit the properties
+                // of this implicit object group, but some users may have set
+                // them in previous versions.
+                Properties p = objectGroup->properties();
+                if (!p.isEmpty()) {
+                    p.merge(tile->properties());
+                    tile->setProperties(p);
+                    objectGroup->setProperties(Properties());
+                }
+
+                tile->setObjectGroup(objectGroup);
+            }
         } else if (xml.name() == QLatin1String("animation")) {
             tile->setFrames(readAnimationFrames());
         } else {
@@ -553,6 +568,13 @@ ImageReference MapReaderPrivate::readImage()
         if (QColor::isValidColor(trans))
             image.transparentColor = QColor(trans);
     }
+
+    QRectF croppedRectangle(0, 0, 0, 0);
+    croppedRectangle.setX(atts.hasAttribute(QLatin1String("croppedboundsx")) ? atts.value(QLatin1String("croppedboundsx")).toFloat() : 0.0f);
+    croppedRectangle.setY(atts.hasAttribute(QLatin1String("croppedboundsy")) ? atts.value(QLatin1String("croppedboundsy")).toFloat() : 0.0f);
+    croppedRectangle.setWidth(atts.hasAttribute(QLatin1String("croppedboundswidth")) ? atts.value(QLatin1String("croppedboundswidth")).toFloat() : image.size.width());
+    croppedRectangle.setHeight(atts.hasAttribute(QLatin1String("croppedboundsheight")) ? atts.value(QLatin1String("croppedboundsheight")).toFloat() : image.size.height());
+    image.croppedRectangle = croppedRectangle;
 
     if (image.source.isEmpty()) {
         while (xml.readNextStartElement()) {
@@ -677,17 +699,18 @@ void MapReaderPrivate::readTilesetWangSets(Tileset &tileset)
                 } else if (xml.name() == QLatin1String("wangedgecolor")
                            || xml.name() == QLatin1String("wangcornercolor")) {
                     const QXmlStreamAttributes wangColorAtts = xml.attributes();
+                    bool isEdge = xml.name() == QLatin1String("wangedgecolor");
                     QString name = wangColorAtts.value(QLatin1String("name")).toString();
                     QColor color = wangColorAtts.value(QLatin1String("color")).toString();
                     int imageId = wangColorAtts.value(QLatin1String("tile")).toInt();
                     qreal probability = wangColorAtts.value(QLatin1String("probability")).toDouble();
 
-                    QSharedPointer<WangColor> wc(new WangColor(0,
-                                                               xml.name() == QLatin1String("wangedgecolor"),
-                                                               name,
-                                                               color,
-                                                               imageId,
-                                                               probability));
+                    auto wc = QSharedPointer<WangColor>::create(0,
+                                                                isEdge,
+                                                                name,
+                                                                color,
+                                                                imageId,
+                                                                probability);
                     wangSet->addWangColor(wc);
 
                     xml.skipCurrentElement();

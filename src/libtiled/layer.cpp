@@ -53,6 +53,14 @@ Layer::Layer(TypeFlag type, const QString &name, int x, int y) :
 {
 }
 
+Layer::~Layer()
+{
+    for (int i = mAllowedTilesets.count()-1; i>=0; i--)
+    {
+        mAllowedTilesets.remove(i);        
+    }
+}
+
 /**
  * Returns the effective opacity, which is the opacity multiplied by the
  * opacity of any parent layers.
@@ -242,14 +250,31 @@ bool Layer::canUseTileSet(const SharedTileset tileset) const
         return true;
 
     for (auto i = mAllowedTilesets.constBegin(); i != mAllowedTilesets.constEnd(); i++) {
-        if ((*i)->fileName() == tileset->fileName()) {
+        if ((*i)->sharedPointer() == tileset->sharedPointer()) {
             return true;
         }
     }
     return false;
 }
 
-void Layer::removeAllowedTileset(Tiled::SharedTileset tileset)
+void Layer::tryFixAllowedTilesetBrokenLink(SharedTileset tileset)
+{
+    for (SharedTileset allowedTileset : mAllowedTilesets)
+    {
+        //Assume that two tilesets with same name also are the same tileset - Might not be the case!
+        if (allowedTileset->sharedPointer() != tileset->sharedPointer() && allowedTileset->name() == tileset->name())
+        {
+            if(mAllowedTilesets.removeOne(allowedTileset))
+            {                
+                mAllowedTilesets.append(tileset);
+            }
+            break;
+        }
+    }
+}
+
+
+    void Layer::removeAllowedTileset(Tiled::SharedTileset tileset)
 {
     mAllowedTilesets.removeAll(tileset);
 }

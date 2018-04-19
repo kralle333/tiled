@@ -106,6 +106,7 @@ private slots:
     void updateTilesetView(Tileset *tileset);
 
     void openAddTilesDialog();
+    void generateCroppedRectangles();
     void addTiles(const QList<QUrl> &urls);
     void removeTiles();
 
@@ -130,7 +131,7 @@ private slots:
     void removeWangSet();
     void setWangSetImage(Tile *tile);
     void setWangColorImage(Tile *tile, bool isEdge, int index);
-    void setWangColorColor(const QColor &color, bool isEdge, int index);
+    void setWangColorColor(WangColor *wangColor, const QColor &color);
 
     void onAnimationEditorClosed();
 
@@ -147,6 +148,7 @@ private:
     QAction *mAddTiles;
     QAction *mRemoveTiles;
     QAction *mShowAnimationEditor;
+    QAction *mGenerateCroppedBounds;
 
     PropertiesDock *mPropertiesDock;
     UndoDock *mUndoDock;

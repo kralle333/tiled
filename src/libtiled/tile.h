@@ -105,6 +105,7 @@ public:
 
     const QPixmap &image() const;
     void setImage(const QPixmap &image);
+    void setCroppedRectangle(QRectF croppedRectangle);
 
     const Tile *currentFrameTile() const;
 
@@ -114,6 +115,7 @@ public:
     int width() const;
     int height() const;
     QSize size() const;
+    QRectF croppedRectangle() const;
 
     QPoint offset() const;
 
@@ -157,6 +159,7 @@ private:
     QPixmap mImage;
     QUrl mImageSource;
     LoadingStatus mImageStatus;
+    QRectF mCroppedRectangle;
     QString mType;
     unsigned mTerrain;
     qreal mProbability;
@@ -200,6 +203,11 @@ inline void Tile::setImage(const QPixmap &image)
 {
     mImage = image;
     mImageStatus = image.isNull() ? LoadingError : LoadingReady;
+}
+
+inline void Tile::setCroppedRectangle(QRectF croppedRectangle)
+{
+    mCroppedRectangle = croppedRectangle;
 }
 
 /**
@@ -248,6 +256,15 @@ inline QSize Tile::size() const
 {
     return mImage.size();
 }
+
+/**
+ * Returns the cropped rectangle
+ */
+inline QRectF Tile::croppedRectangle() const
+{
+    return mCroppedRectangle;
+}
+
 
 /**
  * Returns the type of this tile. Tile objects that do not have a type

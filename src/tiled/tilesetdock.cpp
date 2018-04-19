@@ -1049,7 +1049,6 @@ void TilesetDock::refreshTilesetMenu()
     for (int i = 0; i < mTabBar->count(); ++i) {
         if (mOnlyShowAllowedTilesets) {
             mTabBar->setTabEnabled(i, mMapDocument->currentLayer()->canUseTileSet(mTilesets.at(i)));
-            continue;
         } else {
             mTabBar->setTabEnabled(i, true);
         }
@@ -1061,6 +1060,24 @@ void TilesetDock::refreshTilesetMenu()
         mTilesetActionGroup->addAction(action);
         if (i == currentIndex)
             action->setChecked(true);
+    }
+    if (mOnlyShowAllowedTilesets)
+    {
+        const int tabCount = mTabBar->count();
+        for (int i = 0; i < tabCount/2; ++i)
+        {
+            for (int j = tabCount - 1; i < j; --j)
+            {
+                if (!mTabBar->isTabEnabled(i) && mTabBar->isTabEnabled(j))
+                {
+                    mTabBar->moveTab(j, i);
+                }
+            }
+        }
+        if(!mTabBar->isTabEnabled(mTabBar->currentIndex()))
+        {
+            mTabBar->setCurrentIndex(0);  
+        }
     }
 }
 

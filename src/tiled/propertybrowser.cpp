@@ -68,7 +68,6 @@
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMessageBox>
-#include "changetilescalefactor.h"
 
 namespace Tiled {
 namespace Internal {
@@ -634,7 +633,6 @@ static int mapObjectFlags(const MapObject *mapObject)
 
 void PropertyBrowser::addMapObjectProperties()
 {
-    // DEFAULT MAP OBJECT PROPERTIES
     QtProperty *groupProperty = mGroupManager->addProperty(tr("Object"));
 
     addProperty(IdProperty, QVariant::Int, tr("ID"), groupProperty)->setEnabled(false);
@@ -645,7 +643,9 @@ void PropertyBrowser::addMapObjectProperties()
             addProperty(TypeProperty, QVariant::String, tr("Type"), groupProperty);
     typeProperty->setAttribute(QLatin1String("suggestions"), objectTypeNames());
 
-    addProperty(VisibleProperty, QVariant::Bool, tr("Visible"), groupProperty);
+    if (mMapDocument->allowHidingObjects())
+        addProperty(VisibleProperty, QVariant::Bool, tr("Visible"), groupProperty);
+
     addProperty(XProperty, QVariant::Double, tr("X"), groupProperty);
     addProperty(YProperty, QVariant::Double, tr("Y"), groupProperty);
 
@@ -656,7 +656,6 @@ void PropertyBrowser::addMapObjectProperties()
         addProperty(WidthProperty, QVariant::Double, tr("Width"), groupProperty);
         addProperty(HeightProperty, QVariant::Double, tr("Height"), groupProperty);
     }
-    addProperty(TileScaleFactorProperty, QVariant::Double, tr("ScaleFactor"), groupProperty)->setEnabled(false);
 
     bool isPoint = mapObject->shape() == MapObject::Point;
     addProperty(RotationProperty, QVariant::Double, tr("Rotation"), groupProperty)->setEnabled(!isPoint);
@@ -837,9 +836,7 @@ void PropertyBrowser::addTileProperties()
 
     addProperty(WidthProperty, QVariant::Int, tr("Width"), groupProperty)->setEnabled(false);
     addProperty(HeightProperty, QVariant::Int, tr("Height"), groupProperty)->setEnabled(false);
-
-    QtVariantProperty *scaleFactorProperty =  addProperty(TileScaleFactorProperty, QVariant::Double, tr("ScaleFactor"), groupProperty);
-    scaleFactorProperty->setEnabled(mTilesetDocument);
+    addProperty(CropProperty, QVariant::RectF, tr("CroppedBounds"), groupProperty)->setEnabled(false);
 
     QtVariantProperty *probabilityProperty = addProperty(TileProbabilityProperty,
                                                          QVariant::Double,
@@ -1295,11 +1292,6 @@ void PropertyBrowser::applyTileValue(PropertyId id, const QVariant &val)
                                                   mTilesetDocument->selectedTiles(),
                                                   val.toFloat()));
         break;
-    case TileScaleFactorProperty:
-        undoStack->push(new ChangeTileScaleFactor(mTilesetDocument,
-                                                  mTilesetDocument->selectedTiles(),
-                                                  val.toFloat()));
-        break;
     case ImageSourceProperty: {
         const FilePath filePath = val.value<FilePath>();
         undoStack->push(new ChangeTileImageSource(mTilesetDocument,
@@ -1334,18 +1326,18 @@ void PropertyBrowser::applyWangSetValue(PropertyId id, const QVariant &val)
     switch (id) {
     case NameProperty:
         mDocument->undoStack()->push(new RenameWangSet(mTilesetDocument,
-                                                       mTilesetDocument->tileset()->wangSets().indexOf(wangSet),
+                                                       wangSet,
                                                        val.toString()));
         break;
     case EdgeCountProperty:
-        mDocument->undoStack()->push(new ChangeWangSetEdges(mTilesetDocument,
-                                                            mTilesetDocument->tileset()->wangSets().indexOf(wangSet),
-                                                            val.toInt()));
+        mDocument->undoStack()->push(new ChangeWangSetEdgeCount(mTilesetDocument,
+                                                                wangSet,
+                                                                val.toInt()));
         break;
     case CornerCountProperty:
-        mDocument->undoStack()->push(new ChangeWangSetCorners(mTilesetDocument,
-                                                              mTilesetDocument->tileset()->wangSets().indexOf(wangSet),
-                                                              val.toInt()));
+        mDocument->undoStack()->push(new ChangeWangSetCornerCount(mTilesetDocument,
+                                                                  wangSet,
+                                                                  val.toInt()));
         break;
     default:
         break;
@@ -1357,27 +1349,22 @@ void PropertyBrowser::applyWangColorValue(PropertyId id, const QVariant &val)
     Q_ASSERT(mTilesetDocument);
 
     WangColor *wangColor = static_cast<WangColor*>(mObject);
-    WangColorModel *wangColorModel = mTilesetDocument->wangColorModel();
-    Q_ASSERT(wangColorModel);
 
     switch (id) {
     case NameProperty:
-        mDocument->undoStack()->push(new ChangeWangColorName(val.toString(),
-                                                             wangColor->colorIndex(),
-                                                             wangColor->isEdge(),
-                                                             wangColorModel));
+        mDocument->undoStack()->push(new ChangeWangColorName(mTilesetDocument,
+                                                             wangColor,
+                                                             val.toString()));
         break;
     case ColorProperty:
-        mDocument->undoStack()->push(new ChangeWangColorColor(val.value<QColor>(),
-                                                              wangColor->colorIndex(),
-                                                              wangColor->isEdge(),
-                                                              wangColorModel));
+        mDocument->undoStack()->push(new ChangeWangColorColor(mTilesetDocument,
+                                                              wangColor,
+                                                              val.value<QColor>()));
         break;
     case WangColorProbabilityProperty:
-        mDocument->undoStack()->push(new ChangeWangColorProbability(val.toDouble(),
-                                                                    wangColor->colorIndex(),
-                                                                    wangColor->isEdge(),
-                                                                    wangColorModel));
+        mDocument->undoStack()->push(new ChangeWangColorProbability(mTilesetDocument,
+                                                                    wangColor,
+                                                                    val.toDouble()));
         break;
     default:
         break;
@@ -1590,7 +1577,8 @@ void PropertyBrowser::updateProperties()
         mIdToProperty[NameProperty]->setValue(mapObject->name());
         mIdToProperty[TypeProperty]->setValue(type);
         mIdToProperty[TypeProperty]->setValueColor(palette().color(typeColorGroup, QPalette::WindowText));
-        mIdToProperty[VisibleProperty]->setValue(mapObject->isVisible());
+        if (auto visibleProperty = mIdToProperty[VisibleProperty])
+            visibleProperty->setValue(mapObject->isVisible());
         mIdToProperty[XProperty]->setValue(mapObject->x());
         mIdToProperty[YProperty]->setValue(mapObject->y());
 
@@ -1598,7 +1586,7 @@ void PropertyBrowser::updateProperties()
             mIdToProperty[WidthProperty]->setValue(mapObject->width());
             mIdToProperty[HeightProperty]->setValue(mapObject->height());
         }
-        mIdToProperty[TileScaleFactorProperty]->setValue(mapObject->cell().tile()->scaleFactor());
+
         mIdToProperty[RotationProperty]->setValue(mapObject->rotation());
 
         if (flags & ObjectHasTile) {
@@ -1685,7 +1673,7 @@ void PropertyBrowser::updateProperties()
         mIdToProperty[TypeProperty]->setValue(tile->type());
         mIdToProperty[WidthProperty]->setValue(tileSize.width());
         mIdToProperty[HeightProperty]->setValue(tileSize.height());
-        mIdToProperty[TileScaleFactorProperty]->setValue(tile->scaleFactor());
+        mIdToProperty[CropProperty]->setValue(tile->croppedRectangle());
         mIdToProperty[TileProbabilityProperty]->setValue(tile->probability());
         if (QtVariantProperty *imageSourceProperty = mIdToProperty.value(ImageSourceProperty))
             imageSourceProperty->setValue(QVariant::fromValue(FilePath { tile->imageSource() }));

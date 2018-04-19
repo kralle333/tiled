@@ -670,9 +670,6 @@ void MainWindow::newMapFromTemplate()
     if (!mapDocument)
         return;
 
-    if (!mDocumentManager->saveDocumentAs(mapDocument.data()))
-        return;
-
     mDocumentManager->addDocument(mapDocument.take());
 }
 bool MainWindow::openFile(const QString &fileName, FileFormat *fileFormat)
@@ -724,8 +721,12 @@ bool MainWindow::openFile(const QString &fileName, FileFormat *fileFormat)
 
     mDocumentManager->addDocument(document);
 
-    if (MapDocument *mapDocument = qobject_cast<MapDocument*>(document))
+    if (auto mapDocument = qobject_cast<MapDocument*>(document)) {
         mDocumentManager->checkTilesetColumns(mapDocument);
+    } else if (auto tilesetDocument = qobject_cast<TilesetDocument*>(document)) {
+        mDocumentManager->checkTilesetColumns(tilesetDocument);
+        tilesetDocument->tileset()->syncExpectedColumnsAndRows();
+    }
 
     Preferences::instance()->addRecentFile(fileName);
     return true;

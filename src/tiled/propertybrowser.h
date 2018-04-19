@@ -122,7 +122,7 @@ private:
         YProperty,
         WidthProperty,
         HeightProperty,
-        TileScaleFactorProperty,
+        CropProperty,
         RotationProperty,
         VisibleProperty,
         LockedProperty,

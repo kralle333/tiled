@@ -171,6 +171,19 @@ Alignment MapObject::alignment() const
     return BottomLeft;
 }
 
+float MapObject::scaleX()
+{
+    Tile* tile = cell().tile();
+    QPixmap pixmap = tile->image();
+    return width() / pixmap.width();
+}
+
+float MapObject::scaleY()
+{
+    Tile* tile = cell().tile();
+    QPixmap pixmap = tile->image();
+    return height() / pixmap.height();
+}
 QVariant MapObject::mapObjectProperty(Property property) const
 {
     switch (property) {

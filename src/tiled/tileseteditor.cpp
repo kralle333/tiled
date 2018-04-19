@@ -54,7 +54,6 @@
 #include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
-#include <QCoreApplication>
 #include <QDropEvent>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -65,10 +64,11 @@
 #include <QSettings>
 #include <QStackedWidget>
 #include <QStatusBar>
-
+#include <QProgressDialog>
+#include <QDebug>
+#include <QApplication>
 #include <functional>
 
-#include <QDebug>
 
 static const char SIZE_KEY[] = "TilesetEditor/Size";
 static const char STATE_KEY[] = "TilesetEditor/State";
@@ -164,6 +164,7 @@ TilesetEditor::TilesetEditor(QObject *parent)
     , mAddTiles(new QAction(this))
     , mRemoveTiles(new QAction(this))
     , mShowAnimationEditor(new QAction(this))
+    , mGenerateCroppedBounds(new QAction(this))
     , mPropertiesDock(new PropertiesDock(mMainWindow))
     , mUndoDock(new UndoDock(mMainWindow))
     , mTerrainDock(new TerrainDock(mMainWindow))
@@ -190,6 +191,9 @@ TilesetEditor::TilesetEditor(QObject *parent)
     mShowAnimationEditor->setIcon(QIcon(QLatin1String(":images/24x24/animation-edit.png")));
     mShowAnimationEditor->setCheckable(true);
     mShowAnimationEditor->setIconVisibleInMenu(false);
+    mGenerateCroppedBounds->setIcon(QIcon(QLatin1String(":images/48x48/generate-cropped-rectangle.png")));
+    mGenerateCroppedBounds->setIconVisibleInMenu(false);
+    mGenerateCroppedBounds->setToolTip(tr("Generate Cropped Rectangles"));
     editTerrain->setIcon(QIcon(QLatin1String(":images/24x24/terrain.png")));
     editTerrain->setIconVisibleInMenu(false);
     editCollision->setIcon(QIcon(QLatin1String(":images/48x48/tile-collision-editor.png")));
@@ -209,6 +213,7 @@ TilesetEditor::TilesetEditor(QObject *parent)
     mTilesetToolBar->addAction(editCollision);
     mTilesetToolBar->addAction(editWang);
     mTilesetToolBar->addAction(mShowAnimationEditor);
+    mTilesetToolBar->addAction(mGenerateCroppedBounds);
 
     mMainWindow->statusBar()->addPermanentWidget(mZoomComboBox);
     mMainWindow->statusBar()->addWidget(mStatusInfoLabel);
@@ -226,6 +231,9 @@ TilesetEditor::TilesetEditor(QObject *parent)
     connect(editCollision, &QAction::toggled, this, &TilesetEditor::setEditCollision);
     connect(editWang, &QAction::toggled, this, &TilesetEditor::setEditWang);
     connect(mShowAnimationEditor, &QAction::toggled, mTileAnimationEditor, &TileAnimationEditor::setVisible);
+
+    connect(mAddTiles, &QAction::triggered, this, &TilesetEditor::openAddTilesDialog);
+    connect(mGenerateCroppedBounds, &QAction::triggered, this, &TilesetEditor::generateCroppedRectangles);
 
     connect(mTileAnimationEditor, &TileAnimationEditor::closed, this, &TilesetEditor::onAnimationEditorClosed);
 
@@ -625,6 +633,79 @@ void TilesetEditor::openAddTilesDialog()
         addTiles(urls);
 }
 
+
+//CroppedBoundsX: Iterate left to right, top down to find the first pixel where alpha!=0
+//Example: Iterating from left to right we find that every column of pixels have alpha=0 until we reach x=3,
+//Therefore for this tile the cropped rectangle bounds starts at x=3
+void TilesetEditor::generateCroppedRectangles()
+{
+    Tileset *tileset = currentTileset();
+    if (!tileset)
+        return;
+
+
+
+    int length = tileset->tiles().size();
+    QProgressDialog progress(QLatin1String("Generating Cropped Rectangles..."), QLatin1String("Abort Cropping"), 0, length);
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setValue(0);
+    progress.show();
+
+    QRectF croppedBounds(0, 0, 0, 0);
+    int i = 0;
+    for (Tile* element : tileset->tiles())
+    {
+        const QPixmap tilePixmap = element->image();
+        QImage image = tilePixmap.toImage();
+
+        //X
+        for (int x = 0, nonAlphaPixelFound=false; x <tilePixmap.width() && !nonAlphaPixelFound; ++x) {
+            for (int y = 0; y<tilePixmap.height(); ++y) {
+                nonAlphaPixelFound = image.pixel(x, y) >> 24 != 0;
+                if (nonAlphaPixelFound) {
+                    croppedBounds.setX(x);
+                    break;
+                }
+            }
+        }
+        //Width
+        for (int x = tilePixmap.width()-1, nonAlphaPixelFound = false; x>=0 && !nonAlphaPixelFound; --x) {
+            for (int y = 0; y<tilePixmap.height(); ++y) {
+                nonAlphaPixelFound = image.pixel(x, y) >> 24 != 0;
+                if (nonAlphaPixelFound) {
+                    croppedBounds.setWidth(x-croppedBounds.x());
+                    break;
+                }
+            }
+        }
+        //Y
+        for (int y = 0, nonAlphaPixelFound = false; y <tilePixmap.height() && !nonAlphaPixelFound; ++y) {
+            for (int x = 0; x<tilePixmap.width(); ++x) {
+                nonAlphaPixelFound = image.pixel(x, y) >> 24 != 0;
+                if (nonAlphaPixelFound) {
+                    croppedBounds.setY(y);
+                    break;
+                }
+            }
+        }
+        //Height
+        for (int y = tilePixmap.height() - 1, nonAlphaPixelFound = false; y >= 0 && !nonAlphaPixelFound; --y) {
+            for (int x = 0; x<tilePixmap.width(); ++x) {
+                nonAlphaPixelFound = image.pixel(x, y) >> 24 != 0;
+                if (nonAlphaPixelFound) {
+                    croppedBounds.setHeight(y- croppedBounds.y());
+                    break;
+                }
+            }
+        }
+        element->setCroppedRectangle(croppedBounds);
+        i++;
+        progress.setValue(i);
+        QApplication::processEvents();
+    }
+    saveState();
+}
+
 void TilesetEditor::addTiles(const QList<QUrl> &urls)
 {
     Tileset *tileset = currentTileset();
@@ -982,24 +1063,24 @@ void TilesetEditor::setWangSetImage(Tile *tile)
         return;
 
     mCurrentTilesetDocument->undoStack()->push(new SetWangSetImage(mCurrentTilesetDocument,
-                                                                   mCurrentTilesetDocument->tileset()->wangSets().indexOf(wangSet),
+                                                                   wangSet,
                                                                    tile->id()));
 }
 
 void TilesetEditor::setWangColorImage(Tile *tile, bool isEdge, int index)
 {
-    mCurrentTilesetDocument->undoStack()->push(new ChangeWangColorImage(tile->id(),
-                                                                        index,
-                                                                        isEdge,
-                                                                        mWangDock->wangColorModel()));
+    WangSet *wangSet = mWangDock->currentWangSet();
+    WangColor *wangColor = isEdge ? wangSet->edgeColorAt(index).data() : wangSet->cornerColorAt(index).data();
+    mCurrentTilesetDocument->undoStack()->push(new ChangeWangColorImage(mCurrentTilesetDocument,
+                                                                        wangColor,
+                                                                        tile->id()));
 }
 
-void TilesetEditor::setWangColorColor(const QColor &color, bool isEdge, int index)
+void TilesetEditor::setWangColorColor(WangColor *wangColor, const QColor &color)
 {
-    mCurrentTilesetDocument->undoStack()->push(new ChangeWangColorColor(color,
-                                                                        index,
-                                                                        isEdge,
-                                                                        mWangDock->wangColorModel()));
+    mCurrentTilesetDocument->undoStack()->push(new ChangeWangColorColor(mCurrentTilesetDocument,
+                                                                        wangColor,
+                                                                        color));
 }
 
 void TilesetEditor::onAnimationEditorClosed()
