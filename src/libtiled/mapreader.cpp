@@ -125,6 +125,7 @@ private:
 
     ObjectGroup *readObjectGroup();
     MapObject *readObject();
+    Properties& convertEnumValuesToInt(Properties& properties, MapObject* object);
     QVector<SharedTileset> readAllowedTileset();
     QPolygonF readPolygon();
     TextData readObjectText();
@@ -1109,7 +1110,9 @@ MapObject *MapReaderPrivate::readObject()
 
     while (xml.readNextStartElement()) {
         if (xml.name() == QLatin1String("properties")) {
-            object->mergeProperties(readProperties());
+            Properties properties = readProperties();
+            properties = convertEnumValuesToInt(properties,object);
+            object->mergeProperties(properties);
         } else if (xml.name() == QLatin1String("polygon")) {
             object->setPolygon(readPolygon());
             object->setShape(MapObject::Polygon);
@@ -1140,6 +1143,38 @@ MapObject *MapReaderPrivate::readObject()
     return object;
 }
 
+Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties,MapObject *object)
+{
+    if (!object->cell().tileset())
+        return properties;
+
+    auto enums = object->cell().tileset()->enums();
+    if (enums.count() <= 0)
+        return properties;
+
+    //Compare property keys with keys in the enums list.
+    //If a match is found, convert the enum string value to the correct index
+    for (auto it = properties.constBegin(); it != properties.constEnd(); ++it)
+    {
+        for (auto item : enums.toStdMap())
+        {
+            if (it.key() == item.first)
+            {
+                for (int i = 0; i < item.second.count(); i++)
+                {
+                    if (it.value() == item.second[i])
+                    {
+                        properties[it.key()] = i;
+                        break;
+                    }
+                }
+                break; // Go to next property key
+            }
+        }
+    }
+    
+    return properties;
+}
 
 QVector<SharedTileset> MapReaderPrivate::readAllowedTileset()
 {
