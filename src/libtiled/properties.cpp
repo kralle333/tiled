@@ -114,20 +114,28 @@ int filePathTypeId()
 QMap<QString, QStringList> Properties::getEnums(Object* propertyObject)
 {
     QMap<QString, QStringList> enums;
-    if (propertyObject) {
-        switch (propertyObject->typeId()) {
+    if (propertyObject)
+    {
+        switch (propertyObject->typeId())
+        {
         case Object::MapObjectType:
-        {
-            MapObject *mapObject = static_cast<MapObject*>(propertyObject);
-            enums = mapObject->cell().tileset()->enums();
-            break;
-        }
+            {
+                MapObject* mapObject = static_cast<MapObject*>(propertyObject);
+                if (mapObject && mapObject->cell().tileset())
+                {
+                    enums = mapObject->cell().tileset()->enums();
+                }
+                break;
+            }
         case Object::TileType:
-        {
-            Tile *tileObject = static_cast<Tile*>(propertyObject);
-            enums = tileObject->tileset()->enums();
-            break;
-        }
+            {
+                Tile* tileObject = static_cast<Tile*>(propertyObject);
+                if (tileObject && tileObject->tileset())
+                {
+                    enums = tileObject->tileset()->enums();
+                }
+                break;
+            }
         default: //Unsupported type 
             break;
         }
