@@ -472,7 +472,27 @@ void MapWriterPrivate::writeTileset(QXmlStreamWriter &w, const Tileset &tileset,
             w.writeEndElement(); // </tile>
         }
     }
-
+    if (tileset.enumCount() > 0)
+    {
+        w.writeStartElement(QLatin1String("enums"));
+        for (auto tilesetEnum : tileset.enums().toStdMap())
+        {
+            w.writeStartElement(QLatin1String("enum"));
+            w.writeAttribute(QLatin1String("name"), tilesetEnum.first);
+            QString values = QLatin1String("");
+            for (int i = 0; i < tilesetEnum.second.count(); i++)
+            {
+                if (i != 0)
+                {
+                    values.append(QLatin1String(","));
+                }
+                values.append(tilesetEnum.second.at(i));
+            }
+            w.writeAttribute(QLatin1String("values"), values);
+            w.writeEndElement();
+        }
+        w.writeEndElement();
+    }
     // Write the wangsets
     if (tileset.wangSetCount() > 0) {
         w.writeStartElement(QLatin1String("wangsets"));
@@ -773,7 +793,29 @@ void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
     if (shouldWrite(!mapObject.isVisible(), isTemplateInstance, mapObject.propertyChanged(MapObject::VisibleProperty)))
         w.writeAttribute(QLatin1String("visible"), QLatin1String(mapObject.isVisible() ? "1" : "0"));
 
-    writeProperties(w, mapObject.properties());
+    //Copy properties so we can edit them
+    Properties mapObjectProperties;
+    mapObjectProperties.merge(mapObject.properties());
+
+    if(mapObject.cell().tileset())
+    {        
+        //Convert enum properties from int to strings
+        auto enums = mapObject.cell().tileset()->enums();
+
+        if(enums.count()>0)
+        {
+            Properties::const_iterator it = mapObject.properties().constBegin();
+            Properties::const_iterator it_end = mapObject.properties().constEnd();
+            for (; it != it_end; ++it) {
+                if(enums.contains(it.key()))
+                {
+                    int enumIndex = it.value().toInt();
+                    mapObjectProperties[it.key()] = enums[it.key()].at(enumIndex);
+                }
+            }
+        }
+    }
+    writeProperties(w, mapObjectProperties);
 
     switch (mapObject.shape()) {
     case MapObject::Rectangle:
@@ -933,6 +975,7 @@ void MapWriterPrivate::writeProperties(QXmlStreamWriter &w,
         QVariant exportValue = mUseAbsolutePaths ? toExportValue(it.value())
             : toExportValue(it.value(), mMapDir);
         QString value = exportValue.toString();
+
 
         if (value.contains(QLatin1Char('\n')))
             w.writeCharacters(value);

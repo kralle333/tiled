@@ -27,6 +27,7 @@
 #include "changetileterrain.h"
 #include "changewangsetdata.h"
 #include "changewangcolordata.h"
+#include "enumseditordialog.h"
 #include "erasetiles.h"
 #include "maintoolbar.h"
 #include "mapdocument.h"
@@ -40,6 +41,7 @@
 #include "tileanimationeditor.h"
 #include "tilecollisiondock.h"
 #include "tilelayer.h"
+#include "tileset.h"
 #include "tilesetdocument.h"
 #include "tilesetmanager.h"
 #include "tilesetmodel.h"
@@ -68,6 +70,7 @@
 #include <QDebug>
 #include <QApplication>
 #include <functional>
+#include <ui_enumseditordialog.h>
 
 
 static const char SIZE_KEY[] = "TilesetEditor/Size";
@@ -165,6 +168,7 @@ TilesetEditor::TilesetEditor(QObject *parent)
     , mRemoveTiles(new QAction(this))
     , mShowAnimationEditor(new QAction(this))
     , mGenerateCroppedBounds(new QAction(this))
+    , mEnumerationEditor(new QAction(this))
     , mPropertiesDock(new PropertiesDock(mMainWindow))
     , mUndoDock(new UndoDock(mMainWindow))
     , mTerrainDock(new TerrainDock(mMainWindow))
@@ -194,6 +198,9 @@ TilesetEditor::TilesetEditor(QObject *parent)
     mGenerateCroppedBounds->setIcon(QIcon(QLatin1String(":images/48x48/generate-cropped-rectangle.png")));
     mGenerateCroppedBounds->setIconVisibleInMenu(false);
     mGenerateCroppedBounds->setToolTip(tr("Generate Cropped Rectangles"));
+    mEnumerationEditor->setIcon(QIcon(QLatin1String(":images/22x22/stock-tool-by-list-select.png")));
+    mEnumerationEditor->setIconVisibleInMenu(false);
+    mEnumerationEditor->setToolTip(tr("Edit Enumerations"));
     editTerrain->setIcon(QIcon(QLatin1String(":images/24x24/terrain.png")));
     editTerrain->setIconVisibleInMenu(false);
     editCollision->setIcon(QIcon(QLatin1String(":images/48x48/tile-collision-editor.png")));
@@ -214,6 +221,7 @@ TilesetEditor::TilesetEditor(QObject *parent)
     mTilesetToolBar->addAction(editWang);
     mTilesetToolBar->addAction(mShowAnimationEditor);
     mTilesetToolBar->addAction(mGenerateCroppedBounds);
+    mTilesetToolBar->addAction(mEnumerationEditor);
 
     mMainWindow->statusBar()->addPermanentWidget(mZoomComboBox);
     mMainWindow->statusBar()->addWidget(mStatusInfoLabel);
@@ -234,6 +242,7 @@ TilesetEditor::TilesetEditor(QObject *parent)
 
     connect(mAddTiles, &QAction::triggered, this, &TilesetEditor::openAddTilesDialog);
     connect(mGenerateCroppedBounds, &QAction::triggered, this, &TilesetEditor::generateCroppedRectangles);
+    connect(mEnumerationEditor, &QAction::triggered, this, &TilesetEditor::editEnumerations);
 
     connect(mTileAnimationEditor, &TileAnimationEditor::closed, this, &TilesetEditor::onAnimationEditorClosed);
 
@@ -643,8 +652,6 @@ void TilesetEditor::generateCroppedRectangles()
     if (!tileset)
         return;
 
-
-
     int length = tileset->tiles().size();
     QProgressDialog progress(QLatin1String("Generating Cropped Rectangles..."), QLatin1String("Abort Cropping"), 0, length);
     progress.setWindowModality(Qt::WindowModal);
@@ -704,6 +711,17 @@ void TilesetEditor::generateCroppedRectangles()
         QApplication::processEvents();
     }
     saveState();
+}
+
+void TilesetEditor::editEnumerations()
+{
+    QScopedPointer<EnumsEditorDialog> dialog(new EnumsEditorDialog);
+    dialog->setEnums(currentTileset()->enums());
+    int result = dialog->exec();
+    if(result == QDialog::Accepted && dialog->wereEnumsChanged())
+    {
+        currentTileset()->setEnums(dialog->getEnums());
+    }
 }
 
 void TilesetEditor::addTiles(const QList<QUrl> &urls)

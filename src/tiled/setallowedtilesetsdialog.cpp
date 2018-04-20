@@ -1,7 +1,5 @@
-#include "setallowedtilesetsdialog.h"
 /*
  * setallowedtilesetsdialog.cpp
- * Copyright 2008-2009, Thorbjørn Lindeijer <thorbjorn@lindeijer.nl>
  * Copyright 2018, Kristian Pilegaard Jensen <kralle@gmail.com>
  *
  * This file is part of Tiled.

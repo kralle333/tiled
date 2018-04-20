@@ -938,7 +938,7 @@ void MapEditor::retranslateUi()
 {
     mToolsToolBar->setWindowTitle(tr("Tools"));
     mToolSpecificToolBar->setWindowTitle(tr("Tool Options"));
-    mToolManager->retranslateTools();
+    //mToolManager->retranslateTools();
 }
 
 } // namespace Internal

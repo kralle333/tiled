@@ -26,15 +26,16 @@
 #include "properties.h"
 #include "utils.h"
 
-#include <QPushButton>
 #include <QSettings>
+#include <QtVariantPropertyManager>
+#include <QPushButton>
 
 using namespace Tiled;
 using namespace Tiled::Internal;
 
 static const char * const TYPE_KEY = "AddPropertyDialog/PropertyType";
 
-AddPropertyDialog::AddPropertyDialog(QWidget *parent)
+AddPropertyDialog::AddPropertyDialog(QWidget *parent,Object *propertyObject)
     : QDialog(parent)
     , mUi(new Ui::AddPropertyDialog)
 {
@@ -53,14 +54,19 @@ AddPropertyDialog::AddPropertyDialog(QWidget *parent)
     mUi->typeBox->addItem(typeToName(QVariant::Int),    0);
     mUi->typeBox->addItem(stringType,                   QString());
 
+    for (const auto element : Properties::getEnums(propertyObject).toStdMap())
+    {
+        mUi->typeBox->addItem(element.first, QtVariantPropertyManager::enumTypeId());
+    }
+
     mUi->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 
     // Restore previously used type
     Preferences *prefs = Preferences::instance();
     QSettings *s = prefs->settings();
     QString lastType = s->value(QLatin1String(TYPE_KEY), stringType).toString();
-
     mUi->typeBox->setCurrentText(lastType);
+    typeChanged(lastType);
 
     connect(mUi->name, &QLineEdit::textChanged,
             this, &AddPropertyDialog::nameChanged);
@@ -78,6 +84,7 @@ QString AddPropertyDialog::propertyName() const
     return mUi->name->text();
 }
 
+
 QVariant AddPropertyDialog::propertyValue() const
 {
     return mUi->typeBox->currentData();
@@ -93,4 +100,16 @@ void AddPropertyDialog::typeChanged(const QString &text)
     Preferences *prefs = Preferences::instance();
     QSettings *s = prefs->settings();
     s->setValue(QLatin1String(TYPE_KEY), text);
+    if(mUi->typeBox->currentData() == QtVariantPropertyManager::enumTypeId())
+    {
+        mUi->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
+        mUi->name->setText(text);
+        mUi->name->setEnabled(false);
+    }
+    else
+    {
+        mUi->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
+        mUi->name->setEnabled(true);
+        mUi->name->setText(QLatin1String(""));
+    }
 }

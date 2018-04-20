@@ -250,7 +250,7 @@ void PropertiesDock::pasteProperties()
 
 void PropertiesDock::addProperty()
 {
-    AddPropertyDialog dialog(mPropertyBrowser);
+    AddPropertyDialog dialog(mPropertyBrowser, mDocument->currentObject());
     if (dialog.exec() == AddPropertyDialog::Accepted)
         addProperty(dialog.propertyName(), dialog.propertyValue());
 }

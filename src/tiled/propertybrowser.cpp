@@ -1436,8 +1436,23 @@ QtVariantProperty *PropertyBrowser::createCustomProperty(const QString &name, co
     }
 
     mUpdating = true;
-    QtVariantProperty *property = createProperty(CustomProperty, value.userType(), name);
+    int type = value.userType();
+
+    QStringList enumValues;
+    if (value == QtVariantPropertyManager::enumTypeId()) {
+        type = QtVariantPropertyManager::enumTypeId();
+    }
+    
+
+    QtVariantProperty* property = createProperty(CustomProperty, type, name);
     property->setValue(value);
+    qDebug() << "creation";
+    qDebug() << property->propertyName() << "," << value;
+    if(type == QtVariantPropertyManager::enumTypeId())
+    {
+        property->setAttribute(QLatin1String("enumNames"), Properties::getEnumsWithName(mObject,name));
+    }
+   
     mCustomPropertiesGroup->insertSubProperty(property, precedingProperty);
 
     // Collapse custom color properties, to save space
@@ -1790,15 +1805,21 @@ void PropertyBrowser::updateCustomProperties()
     }
 
     QMapIterator<QString,QVariant> it(mCombinedProperties);
-
+    qDebug() << "refresh";
     while (it.hasNext()) {
         it.next();
+        QStringList enums = Properties::getEnumsWithName(mObject, it.key());
+        int type = enums.isEmpty() ? it.value().userType() : VariantPropertyManager::enumTypeId();
         QtVariantProperty *property = addProperty(CustomProperty,
-                                                  it.value().userType(),
+                                                  type,
                                                   it.key(),
                                                   mCustomPropertiesGroup);
 
+        qDebug() << property->propertyName() << "," << it.value();
+        if(!enums.isEmpty())
+            property->setAttribute(QLatin1String("enumNames"), enums);
         property->setValue(it.value());
+
         updateCustomPropertyColor(it.key());
     }
 

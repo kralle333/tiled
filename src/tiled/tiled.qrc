@@ -145,5 +145,6 @@
         <file>images/22x22/rectangle-fill.png</file>
         <file>images/22x22/ellipse-fill.png</file>
         <file>images/48x48/generate-cropped-rectangle.png</file>
+        <file>images/22x22/stock-tool-by-list-select.png</file>
     </qresource>
 </RCC>
