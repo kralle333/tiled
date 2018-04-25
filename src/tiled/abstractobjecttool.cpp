@@ -252,10 +252,19 @@ bool AbstractObjectTool::IsAlphaZeroAt(MapObjectItem *objectItem, const QPointF 
         const float scaleY = 1/ mapObject->scaleY();
         QTransform inverseTransform = objectItem->sceneTransform().inverted();
         QPointF imageLocalPosition = inverseTransform.map(pos);
-        const int x = imageLocalPosition.x() * scaleX;
-        const int y = (mapObject->height() - -imageLocalPosition.y()) * scaleY;
+        int x = imageLocalPosition.x() * scaleX;
+        int y = (mapObject->height() - -imageLocalPosition.y()) * scaleY;
+        QImage image = pixmap.toImage();
+        if (mapObject->cell().flippedHorizontally())
+        {
+            x = image.width() - x;
+        }
+        if (mapObject->cell().flippedVertically())
+        {
+            y = image.height() - y;
+        }
 
-        return pixmap.toImage().pixel(x, y) >> 24 == 0;
+        return image.pixel(x, y) >> 24 == 0;
     }
     return false;
 }
