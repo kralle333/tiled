@@ -1272,6 +1272,17 @@ void ObjectSelectionTool::updateSelection(const QPointF& pos,
                 const float scaleY = mapObject->scaleY();
                 croppedRect = QRectF(croppedRect.x() * scaleX, scaleY * croppedRect.y(), scaleX * croppedRect.width(),
                                      scaleY * (croppedRect.height()));
+
+                if (mapObject->cell().flippedHorizontally()) {
+                    float offsetRight = mapObject->width() - (croppedRect.x() + croppedRect.width());
+                    croppedRect.translate(-croppedRect.x() + offsetRight,0);
+                }
+                if (mapObject->cell().flippedVertically()) {
+                    float offsetBottom = mapObject->height() - (croppedRect.y() + croppedRect.height());
+                    croppedRect.translate(0, -croppedRect.y()+offsetBottom);
+                }
+
+
                 croppedRect.translate(0, -mapObjectItem->mapObject()->height());
                 if (mapObject->rotation() == 0)
                 {
