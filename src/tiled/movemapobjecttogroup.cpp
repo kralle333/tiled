@@ -47,6 +47,8 @@ void MoveMapObjectToGroup::undo()
 {
     mMapDocument->mapObjectModel()->removeObject(mNewObjectGroup, mMapObject);
     mMapDocument->mapObjectModel()->insertObject(mOldObjectGroup, mOldIndex, mMapObject);
+    mMapDocument->setCurrentObject(mMapObject);
+    mMapDocument->setSelectedObjects({ mMapObject });
 }
 
 void MoveMapObjectToGroup::redo()
@@ -56,4 +58,6 @@ void MoveMapObjectToGroup::redo()
 
     mMapDocument->mapObjectModel()->removeObject(mOldObjectGroup, mMapObject);
     mMapDocument->mapObjectModel()->insertObject(mNewObjectGroup, -1, mMapObject);
+    mMapDocument->setCurrentObject(mMapObject);
+    mMapDocument->setSelectedObjects({ mMapObject });
 }
