@@ -213,7 +213,10 @@ void ClipboardManager::pasteObjectGroup(const ObjectGroup *objectGroup,
     if (!(flags & PasteInPlace)) {
         // Determine where to insert the objects
         const MapRenderer *renderer = mapDocument->renderer();
-        const QPointF center = objectGroup->objectsBoundingRect().center();
+        QPointF center = objectGroup->objectsBoundingRect().center();
+
+        // Convert to Tiled coordinate system
+        center.setY(center.y() - objectGroup->objectsBoundingRect().height());
 
         // Take the mouse position if the mouse is on the view, otherwise
         // take the center of the view.
@@ -224,7 +227,6 @@ void ClipboardManager::pasteObjectGroup(const ObjectGroup *objectGroup,
             viewPos = QPoint(view->width() / 2, view->height() / 2);
 
         const QPointF scenePos = view->mapToScene(viewPos);
-
         insertPos = renderer->screenToPixelCoords(scenePos) - center;
         SnapHelper(renderer).snap(insertPos);
     }
