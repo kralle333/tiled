@@ -107,6 +107,7 @@ public slots:
     void selectNone();
 
     void copyPosition();
+    void focusOnCurrentObject();
 
     void cropToSelection();
     void autocrop();

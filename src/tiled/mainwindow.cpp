@@ -531,6 +531,10 @@ MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
     connect(copyPositionShortcut, SIGNAL(activated()),
             mActionHandler, SLOT(copyPosition()));
 
+    QShortcut *focusOnCurrentObjectShortcut = new QShortcut(tr("Ctrl+F"), this);
+    connect(focusOnCurrentObjectShortcut, SIGNAL(activated()),
+            mActionHandler, SLOT(focusOnCurrentObject()));
+
     updateActions();
     updateZoomActions();
     readSettings();
