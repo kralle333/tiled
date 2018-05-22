@@ -273,14 +273,16 @@ Map *MapReaderPrivate::readMap()
     const Map::RenderOrder renderOrder =
         renderOrderFromString(renderOrderString);
 
-    const int nextObjectId =
-        atts.value(QLatin1String("nextobjectid")).toInt();
+    const int nextLayerId = atts.value(QLatin1String("nextlayerid")).toInt();
+    const int nextObjectId = atts.value(QLatin1String("nextobjectid")).toInt();
 
     mMap.reset(new Map(orientation, mapWidth, mapHeight, tileWidth, tileHeight, infinite));
     mMap->setHexSideLength(hexSideLength);
     mMap->setStaggerAxis(staggerAxis);
     mMap->setStaggerIndex(staggerIndex);
     mMap->setRenderOrder(renderOrder);
+    if (nextLayerId)
+        mMap->setNextLayerId(nextLayerId);
     if (nextObjectId)
         mMap->setNextObjectId(nextObjectId);
 
@@ -469,7 +471,7 @@ void MapReaderPrivate::readTilesetTile(Tileset &tileset)
         } else if (xml.name() == QLatin1String("image")) {
             ImageReference imageReference = readImage();
             if (imageReference.hasImage()) {
-                QImage image = imageReference.create();
+                QPixmap image = imageReference.create();
                 if (image.isNull()) {
                     if (imageReference.source.isEmpty())
                         xml.raiseError(tr("Error reading embedded image for tile %1").arg(id));
@@ -478,7 +480,7 @@ void MapReaderPrivate::readTilesetTile(Tileset &tileset)
                 tileset.setTileImage(tile, QPixmap::fromImage(image),
                                      imageReference.source);
             }
-        }else if (xml.name() == QLatin1String("objectgroup")) {
+        } else if (xml.name() == QLatin1String("objectgroup")) {
             ObjectGroup *objectGroup = readObjectGroup();
             if (objectGroup) {
                 // Migrate properties from the object group to the tile. Since
@@ -744,11 +746,16 @@ void MapReaderPrivate::readEnums(Tileset &tileset)
 static void readLayerAttributes(Layer &layer,
                                 const QXmlStreamAttributes &atts)
 {
+    const QStringRef idRef = atts.value(QLatin1String("id"));
     const QStringRef opacityRef = atts.value(QLatin1String("opacity"));
     const QStringRef visibleRef = atts.value(QLatin1String("visible"));
     const QStringRef lockedRef = atts.value(QLatin1String("locked"));
 
     bool ok;
+    const int id = idRef.toInt(&ok);
+    if (ok)
+        layer.setId(id);
+
     const qreal opacity = opacityRef.toDouble(&ok);
     if (ok)
         layer.setOpacity(opacity);
@@ -1052,7 +1059,7 @@ void MapReaderPrivate::readImageLayerImage(ImageLayer &imageLayer)
 
     QUrl sourceUrl = toUrl(source, mPath);
 
-    imageLayer.loadFromImage(QImage(sourceUrl.toLocalFile()), sourceUrl);
+    imageLayer.loadFromImage(sourceUrl);
 
     xml.skipCurrentElement();
 }

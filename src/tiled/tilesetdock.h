@@ -124,7 +124,7 @@ private slots:
     void tileAnimationChanged(Tile *tile);
 
     void removeTileset();
-    void removeTileset(int index);
+    void removeTilesetAt(int index);
 
     void newTileset();
     void editTileset();

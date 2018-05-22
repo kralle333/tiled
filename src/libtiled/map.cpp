@@ -56,6 +56,7 @@ Map::Map(Orientation orientation,
     mStaggerIndex(StaggerOdd),
     mDrawMarginsDirty(true),
     mLayerDataFormat(Base64Zlib),
+    mNextLayerId(1),
     mNextObjectId(1)
 {
 }
@@ -195,21 +196,6 @@ QList<ObjectGroup*> Map::objectGroups() const
     return layers;
 }
 
-/**
- * Returns the list of all tile layers.
- *
- * @deprecated Use the LayerIterator instead.
- */
-QList<TileLayer*> Map::tileLayers() const
-{
-    QList<TileLayer*> layers;
-    LayerIterator iterator(this);
-    while (Layer *layer = iterator.next())
-        if (TileLayer *tl = layer->asTileLayer())
-            layers.append(tl);
-    return layers;
-}
-
 void Map::addLayer(Layer *layer)
 {
     adoptLayer(layer);
@@ -243,6 +229,9 @@ void Map::insertLayer(int index, Layer *layer)
 
 void Map::adoptLayer(Layer *layer)
 {
+    if (layer->id() == 0)
+        layer->setId(takeNextLayerId());
+
     layer->setMap(this);
 
     if (ObjectGroup *group = layer->asObjectGroup())

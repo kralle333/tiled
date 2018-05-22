@@ -41,7 +41,11 @@
      <x>0</x>
      <y>0</y>
      <width>553</width>
+<<<<<<< HEAD
      <height>21</height>
+=======
+     <height>31</height>
+>>>>>>> 82b98df06b8a0432c0746cf37be1b23b9355bd16
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -115,7 +119,15 @@
     <property name="title">
      <string>&amp;Map</string>
     </property>
+    <widget class="QMenu" name="menuUnloadWorld">
+     <property name="title">
+      <string>Unload World</string>
+     </property>
+    </widget>
     <addaction name="actionAddExternalTileset"/>
+    <addaction name="separator"/>
+    <addaction name="actionLoadWorld"/>
+    <addaction name="menuUnloadWorld"/>
     <addaction name="separator"/>
     <addaction name="actionResizeMap"/>
     <addaction name="actionOffsetMap"/>
@@ -626,6 +638,11 @@
    </property>
    <property name="text">
     <string>For Hovered Object</string>
+   </property>
+  </action>
+  <action name="actionLoadWorld">
+   <property name="text">
+    <string>Load World...</string>
    </property>
   </action>
  </widget>

@@ -30,12 +30,13 @@
 #include "tilesetmanager.h"
 
 #include "filesystemwatcher.h"
-#include "tileanimationdriver.h"
+#include "imagecache.h"
 #include "tile.h"
+#include "tileanimationdriver.h"
 #include "tilesetformat.h"
 
 #include <QImage>
-#include <QDebug>
+
 #include "qtcompat_p.h"
 
 namespace Tiled {
@@ -50,8 +51,8 @@ TilesetManager::TilesetManager():
     mAnimationDriver(new TileAnimationDriver(this)),
     mReloadTilesetsOnChange(false)
 {
-    connect(mWatcher, SIGNAL(fileChanged(QString)),
-            this, SLOT(fileChanged(QString)));
+    connect(mWatcher, &FileSystemWatcher::fileChanged,
+            this, &TilesetManager::fileChanged);
 
     mChangedFilesTimer.setInterval(500);
     mChangedFilesTimer.setSingleShot(true);
@@ -153,11 +154,15 @@ void TilesetManager::reloadImages(Tileset *tileset)
     if (tileset->isCollection()) {
         for (Tile *tile : tileset->tiles()) {
             // todo: trigger reload of remote files
-            if (tile->imageSource().isLocalFile())
-                tile->setImage(QPixmap(tile->imageSource().toLocalFile()));
+            if (tile->imageSource().isLocalFile()) {
+                const QString localFile = tile->imageSource().toLocalFile();
+                ImageCache::remove(localFile);
+                tile->setImage(ImageCache::loadPixmap(localFile));
+            }
         }
         emit tilesetImagesChanged(tileset);
     } else {
+        ImageCache::remove(tileset->imageSource().toLocalFile());
         if (tileset->loadImage())
             emit tilesetImagesChanged(tileset);
     }
@@ -218,10 +223,13 @@ void TilesetManager::fileChanged(const QString &path)
 
 void TilesetManager::fileChangedTimeout()
 {
+    for (const QString &fileName : qAsConst(mChangedFiles))
+        ImageCache::remove(fileName);
+
     for (Tileset *tileset : qAsConst(mTilesets)) {
         const QString fileName = tileset->imageSource().toLocalFile();
         if (mChangedFiles.contains(fileName))
-            if (tileset->loadFromImage(fileName))
+            if (tileset->loadImage())
                 emit tilesetImagesChanged(tileset);
     }
 

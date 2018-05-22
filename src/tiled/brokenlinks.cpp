@@ -434,25 +434,29 @@ namespace Tiled
             mBrokenLinks.remove(index);
             endRemoveRows();
 
-            if (!hasBrokenLinks())
-            emit hasBrokenLinksChanged(false);
-        }
+void BrokenLinksModel::connectToTileset(const SharedTileset &tileset)
+{
+    auto tilesetDocument = TilesetDocument::findDocumentForTileset(tileset);
+    if (tilesetDocument) {
+        connect(tilesetDocument, &TilesetDocument::tileImageSourceChanged,
+                this, &BrokenLinksModel::tileImageSourceChanged);
+        connect(tilesetDocument, &TilesetDocument::tilesetChanged,
+                this, &BrokenLinksModel::tilesetChanged);
+    }
+}
 
+void BrokenLinksModel::disconnectFromTileset(const SharedTileset &tileset)
+{
+    auto tilesetDocument = DocumentManager::instance()->findTilesetDocument(tileset->sharedPointer());
+    if (tilesetDocument)
+        tilesetDocument->disconnect(this);
+}
 
-        BrokenLinksWidget::BrokenLinksWidget(BrokenLinksModel* brokenLinksModel, QWidget* parent)
-            : QWidget(parent)
-              , mBrokenLinksModel(brokenLinksModel)
-              , mTitleLabel(new QLabel(this))
-              , mDescriptionLabel(new QLabel(this))
-              , mView(new QTreeView(this))
-              , mButtons(new QDialogButtonBox(QDialogButtonBox::Ignore,
-                                              Qt::Horizontal,
-                                              this))
-        {
-            mTitleLabel->setText(tr("Some files could not be found"));
-            mDescriptionLabel->setText(
-                tr("One or more referenced files could not be found. You can help locate them below."));
-            mDescriptionLabel->setWordWrap(true);
+void BrokenLinksModel::removeLink(int index)
+{
+    beginRemoveRows(QModelIndex(), index, index);
+    mBrokenLinks.remove(index);
+    endRemoveRows();
 
             mLocateButton = mButtons->addButton(tr("Locate File..."), QDialogButtonBox::ActionRole);
             mLocateButton->setEnabled(false);
