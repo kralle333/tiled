@@ -696,12 +696,12 @@ void MainWindow::newMap()
 void MainWindow::newMapFromTemplate()
 {
     NewMapFromTemplateDialog newMapDialog(this);
-    QScopedPointer<MapDocument> mapDocument(newMapDialog.createMap());
+    auto mapDocument = newMapDialog.createMap();
 
     if (!mapDocument)
         return;
 
-    mDocumentManager->addDocument(mapDocument.take());
+    mDocumentManager->addDocument(mapDocument);
 }
 bool MainWindow::openFile(const QString &fileName, FileFormat *fileFormat)
 {

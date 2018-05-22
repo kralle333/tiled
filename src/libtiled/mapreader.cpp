@@ -477,8 +477,7 @@ void MapReaderPrivate::readTilesetTile(Tileset &tileset)
                         xml.raiseError(tr("Error reading embedded image for tile %1").arg(id));
                 }
                 tile->setCroppedRectangle(imageReference.croppedRectangle);
-                tileset.setTileImage(tile, QPixmap::fromImage(image),
-                                     imageReference.source);
+                tileset.setTileImage(tile, image, imageReference.source);
             }
         } else if (xml.name() == QLatin1String("objectgroup")) {
             ObjectGroup *objectGroup = readObjectGroup();
@@ -731,10 +730,8 @@ void MapReaderPrivate::readEnums(Tileset &tileset)
 {
     Q_ASSERT(xml.isStartElement() && xml.name() == QLatin1String("enums"));
 
-    while (xml.readNextStartElement())
-    {
-        if (xml.name() == QLatin1String("enum"))
-        {
+    while (xml.readNextStartElement()) {
+        if (xml.name() == QLatin1String("enum")) {
             const QXmlStreamAttributes enumAtts = xml.attributes();
             const QString name = enumAtts.value(QLatin1String("name")).toString();
             QString enumValues = enumAtts.value((QLatin1String("values"))).toString();
@@ -1118,7 +1115,7 @@ MapObject *MapReaderPrivate::readObject()
     while (xml.readNextStartElement()) {
         if (xml.name() == QLatin1String("properties")) {
             Properties properties = readProperties();
-            properties = convertEnumValuesToInt(properties,object);
+            properties = convertEnumValuesToInt(properties, object);
             object->mergeProperties(properties);
         } else if (xml.name() == QLatin1String("polygon")) {
             object->setPolygon(readPolygon());
@@ -1150,7 +1147,7 @@ MapObject *MapReaderPrivate::readObject()
     return object;
 }
 
-Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties,MapObject *object)
+Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties, MapObject *object)
 {
     if (!object->cell().tileset())
         return properties;
@@ -1161,16 +1158,11 @@ Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties,MapO
 
     //Compare property keys with keys in the enums list.
     //If a match is found, convert the enum string value to the correct index
-    for (auto it = properties.constBegin(); it != properties.constEnd(); ++it)
-    {
-        for (auto item : enums.toStdMap())
-        {
-            if (it.key() == item.first)
-            {
-                for (int i = 0; i < item.second.count(); i++)
-                {
-                    if (it.value() == item.second[i])
-                    {
+    for (auto it = properties.constBegin(); it != properties.constEnd(); ++it) {
+        for (auto item : enums.toStdMap()) {
+            if (it.key() == item.first) {
+                for (int i = 0; i < item.second.count(); i++) {
+                    if (it.value() == item.second[i]) {
                         properties[it.key()] = i;
                         break;
                     }
@@ -1179,7 +1171,7 @@ Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties,MapO
             }
         }
     }
-    
+
     return properties;
 }
 

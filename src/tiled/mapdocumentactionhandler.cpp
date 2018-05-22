@@ -676,7 +676,9 @@ void MapDocumentActionHandler::toggleOtherLayers()
 }
 void MapDocumentActionHandler::tilesetsAllowed()
 {
+        
     QScopedPointer<SetAllowedTilesetsDialog> dialog(new SetAllowedTilesetsDialog);
+
     dialog->populateTilesetLists(mMapDocument->map()->tilesets(), mMapDocument->currentLayer()->getAllowedTilesets());
 
     int result = dialog->exec();

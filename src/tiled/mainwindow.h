@@ -108,7 +108,6 @@ private slots:
     void newMap();
     void openFileDialog();
     void newMapFromTemplate();
-    void openFile();
     bool saveFile();
     bool saveFileAs();
     void saveAll();
