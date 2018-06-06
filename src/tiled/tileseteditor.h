@@ -44,6 +44,7 @@ class Tileset;
 namespace Internal {
 
 class PropertiesDock;
+class TemplatesDock;
 class TerrainDock;
 class TileAnimationEditor;
 class TileCollisionDock;
@@ -156,6 +157,7 @@ private:
     UndoDock *mUndoDock;
     TerrainDock *mTerrainDock;
     TileCollisionDock *mTileCollisionDock;
+    TemplatesDock *mTemplatesDock;
     WangDock *mWangDock;
     QComboBox *mZoomComboBox;
     QLabel *mStatusInfoLabel;

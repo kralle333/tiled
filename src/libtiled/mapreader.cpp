@@ -52,6 +52,8 @@
 #include <QVector>
 #include <QXmlStreamReader>
 
+#include <memory>
+
 using namespace Tiled;
 using namespace Tiled::Internal;
 
@@ -141,7 +143,7 @@ private:
 
     QString mError;
     QDir mPath;
-    QScopedPointer<Map> mMap;
+    std::unique_ptr<Map> mMap;
     GidMapper mGidMapper;
     bool mReadingExternalTileset;
 
@@ -327,7 +329,7 @@ Map *MapReaderPrivate::readMap()
         }
 
         // Fix up sizes of tile objects. This is for backwards compatibility.
-        LayerIterator iterator(mMap.data());
+        LayerIterator iterator(mMap.get());
         while (Layer *layer = iterator.next()) {
             if (ObjectGroup *objectGroup = layer->asObjectGroup()) {
                 for (MapObject *object : *objectGroup) {
@@ -343,7 +345,7 @@ Map *MapReaderPrivate::readMap()
         }
     }
 
-    return mMap.take();
+    return mMap.release();
 }
 
 SharedTileset MapReaderPrivate::readTileset()

@@ -71,16 +71,16 @@ static bool isChangedTemplateInstance(MapObject *mapObject)
 {
     if (const MapObject *templateObject = mapObject->templateObject()) {
         return mapObject->changedProperties() != 0 ||
-            mapObject->properties() != templateObject->properties();
+               mapObject->properties() != templateObject->properties();
     }
     return false;
 }
 
 
 AbstractObjectTool::AbstractObjectTool(const QString &name,
-    const QIcon &icon,
-    const QKeySequence &shortcut,
-    QObject *parent)
+                                       const QIcon &icon,
+                                       const QKeySequence &shortcut,
+                                       QObject *parent)
     : AbstractTool(name, icon, shortcut, parent)
     , mMapScene(nullptr)
 {
@@ -148,7 +148,7 @@ void AbstractObjectTool::mouseLeft()
 }
 
 void AbstractObjectTool::mouseMoved(const QPointF &pos,
-    Qt::KeyboardModifiers)
+                                    Qt::KeyboardModifiers)
 {
     // Take into account the offset of the current layer
     QPointF offsetPos = pos;
@@ -167,7 +167,7 @@ void AbstractObjectTool::mousePressed(QGraphicsSceneMouseEvent *event)
 {
     if (event->button() == Qt::RightButton) {
         showContextMenu(topMostMapObjectAt(event->scenePos()),
-            event->screenPos());
+                        event->screenPos());
     }
 }
 
@@ -216,12 +216,7 @@ QList<MapObject*> AbstractObjectTool::mapObjectsAt(const QPointF &pos) const
 
         MapObjectItem *objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
         if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked())
-        {
-            if (IsAlphaZeroAt(objectItem, pos)) {
-                continue;
-            }
             objectList.append(objectItem->mapObject());
-        }
     }
     return objectList;
 }
@@ -236,43 +231,9 @@ MapObject *AbstractObjectTool::topMostMapObjectAt(const QPointF &pos) const
 
         MapObjectItem *objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
         if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked())
-        {
-            if(IsAlphaZeroAt(objectItem,pos))
-            {
-                continue;
-            }
             return objectItem->mapObject();
-        }
     }
     return nullptr;
-}
-
-bool AbstractObjectTool::IsAlphaZeroAt(MapObjectItem *objectItem, const QPointF &pos)
-{
-    MapObject *mapObject = objectItem->mapObject();
-    Tile* mapObjectTile = mapObject->cell().tile();
-    if (mapObjectTile != nullptr && !mapObjectTile->imageSource().isEmpty()) {
-        //Only return object if object's alpha value is not 0 at the given position
-        QPixmap pixmap = mapObjectTile->image();
-        const float scaleX = 1/ mapObject->scaleX();
-        const float scaleY = 1/ mapObject->scaleY();
-        QTransform inverseTransform = objectItem->sceneTransform().inverted();
-        QPointF imageLocalPosition = inverseTransform.map(pos);
-        int x = imageLocalPosition.x() * scaleX;
-        int y = (mapObject->height() - -imageLocalPosition.y()) * scaleY;
-        QImage image = pixmap.toImage();
-        if (mapObject->cell().flippedHorizontally())
-        {
-            x = image.width() - x;
-        }
-        if (mapObject->cell().flippedVertically())
-        {
-            y = image.height() - y;
-        }
-
-        return image.pixel(x, y) >> 24 == 0;
-    }
-    return false;
 }
 
 void AbstractObjectTool::duplicateObjects()
@@ -294,9 +255,9 @@ void AbstractObjectTool::resetTileSize()
             continue;
 
         commands << new ResizeMapObject(mapDocument(),
-            mapObject,
-            mapObject->cell().tile()->size(),
-            mapObject->size());
+                                        mapObject,
+                                        mapObject->cell().tile()->size(),
+                                        mapObject->size());
     }
 
     if (!commands.isEmpty()) {
@@ -325,10 +286,10 @@ static QString saveObjectTemplate(const MapObject *mapObject)
 
     QWidget *parent = DocumentManager::instance()->widget()->window();
     QString fileName = QFileDialog::getSaveFileName(parent,
-        QCoreApplication::translate("Tiled::Internal::MainWindow", "Save Template"),
-        suggestedFileName,
-        filter,
-        &selectedFilter);
+                                                    QCoreApplication::translate("Tiled::Internal::MainWindow", "Save Template"),
+                                                    suggestedFileName,
+                                                    filter,
+                                                    &selectedFilter);
 
     if (fileName.isEmpty())
         return QString();
@@ -340,12 +301,12 @@ static QString saveObjectTemplate(const MapObject *mapObject)
 
     if (!format->write(&objectTemplate, fileName)) {
         QMessageBox::critical(nullptr, QCoreApplication::translate("Tiled::Internal::MainWindow", "Error Saving Template"),
-            format->errorString());
+                              format->errorString());
         return QString();
     }
 
     prefs->setLastPath(Preferences::ObjectTemplateFile,
-        QFileInfo(fileName).path());
+                       QFileInfo(fileName).path());
 
     return fileName;
 }
@@ -396,8 +357,8 @@ void AbstractObjectTool::detachSelectedObjects()
 void AbstractObjectTool::replaceObjectsWithTemplate()
 {
     mapDocument()->undoStack()->push(new ReplaceObjectsWithTemplate(mapDocument(),
-        mapDocument()->selectedObjects(),
-        objectTemplate()));
+                                                                    mapDocument()->selectedObjects(),
+                                                                    objectTemplate()));
 }
 
 void AbstractObjectTool::resetInstances()
@@ -477,7 +438,7 @@ void AbstractObjectTool::lowerToBottom()
  * remove the map objects, or to edit their properties.
  */
 void AbstractObjectTool::showContextMenu(MapObject *clickedObject,
-    QPoint screenPos)
+                                         QPoint screenPos)
 {
     const QList<MapObject*> &selectedObjects = mapDocument()->selectedObjects();
 
@@ -489,38 +450,38 @@ void AbstractObjectTool::showContextMenu(MapObject *clickedObject,
 
     QMenu menu;
     QAction *duplicateAction = menu.addAction(tr("Duplicate %n Object(s)", "", selectedObjects.size()),
-        this, SLOT(duplicateObjects()));
+                                              this, SLOT(duplicateObjects()));
     QAction *removeAction = menu.addAction(tr("Remove %n Object(s)", "", selectedObjects.size()),
-        this, SLOT(removeObjects()));
+                                           this, SLOT(removeObjects()));
 
     duplicateAction->setIcon(QIcon(QLatin1String(":/images/16x16/stock-duplicate-16.png")));
     removeAction->setIcon(QIcon(QLatin1String(":/images/16x16/edit-delete.png")));
 
     bool anyTileObjectSelected = std::any_of(selectedObjects.begin(),
-        selectedObjects.end(),
-        isTileObject);
+                                             selectedObjects.end(),
+                                             isTileObject);
 
     if (anyTileObjectSelected) {
         auto resetTileSizeAction = menu.addAction(tr("Reset Tile Size"), this, SLOT(resetTileSize()));
         resetTileSizeAction->setEnabled(std::any_of(selectedObjects.begin(),
-            selectedObjects.end(),
-            isResizedTileObject));
+                                                    selectedObjects.end(),
+                                                    isResizedTileObject));
 
         auto changeTileAction = menu.addAction(tr("Replace Tile"), this, SLOT(changeTile()));
         changeTileAction->setEnabled(tile() && (!selectedObjects.first()->isTemplateBase() ||
-            tile()->tileset()->isExternal()));
+                                                tile()->tileset()->isExternal()));
     }
 
     // Create action for replacing an object with a template
     auto replaceTemplateAction = menu.addAction(tr("Replace With Template"), this, SLOT(replaceObjectsWithTemplate()));
+    auto selectedTemplate = objectTemplate();
 
-    if (auto selectedTemplate = objectTemplate()) {
+    if (selectedTemplate) {
         QString name = QFileInfo(selectedTemplate->fileName()).fileName();
         replaceTemplateAction->setText(tr("Replace With Template \"%1\"").arg(name));
     }
-    else {
+    if (!selectedTemplate || !mapDocument()->templateAllowed(selectedTemplate))
         replaceTemplateAction->setEnabled(false);
-    }
 
     if (selectedObjects.size() == 1) {
         MapObject *currentObject = selectedObjects.first();
@@ -540,24 +501,24 @@ void AbstractObjectTool::showContextMenu(MapObject *clickedObject,
     }
 
     bool anyTemplateInstanceSelected = std::any_of(selectedObjects.begin(),
-        selectedObjects.end(),
-        isTemplateInstance);
+                                                   selectedObjects.end(),
+                                                   isTemplateInstance);
 
     if (anyTemplateInstanceSelected) {
         menu.addAction(tr("Detach"), this, SLOT(detachSelectedObjects()));
 
         auto resetToTemplateAction = menu.addAction(tr("Reset Template Instance(s)"), this, SLOT(resetInstances()));
         resetToTemplateAction->setEnabled(std::any_of(selectedObjects.begin(),
-            selectedObjects.end(),
-            isChangedTemplateInstance));
+                                                      selectedObjects.end(),
+                                                      isChangedTemplateInstance));
     }
 
     menu.addSeparator();
     menu.addAction(tr("Flip Horizontally"), this, SLOT(flipHorizontally()), QKeySequence(tr("X")));
     menu.addAction(tr("Flip Vertically"), this, SLOT(flipVertically()), QKeySequence(tr("Y")));
 
-    ObjectGroup *objectGroup = RaiseLowerHelper::sameObjectGroup(selectedObjects);
-    if (objectGroup && objectGroup->drawOrder() == ObjectGroup::IndexOrder) {
+    ObjectGroup *sameObjectGroup = RaiseLowerHelper::sameObjectGroup(selectedObjects);
+    if (sameObjectGroup && sameObjectGroup->drawOrder() == ObjectGroup::IndexOrder) {
         menu.addSeparator();
         menu.addAction(tr("Raise Object"), this, SLOT(raise()), QKeySequence(tr("PgUp")));
         menu.addAction(tr("Lower Object"), this, SLOT(lower()), QKeySequence(tr("PgDown")));
@@ -565,21 +526,23 @@ void AbstractObjectTool::showContextMenu(MapObject *clickedObject,
         menu.addAction(tr("Lower Object to Bottom"), this, SLOT(lowerToBottom()), QKeySequence(tr("End")));
     }
 
-    const QList<ObjectGroup*> objectGroups = mapDocument()->map()->objectGroups();
-    if (objectGroups.size() > 1) {
+    auto objectGroups = mapDocument()->map()->objectGroups();
+    if (!objectGroups.isEmpty()) {
         menu.addSeparator();
         QMenu *moveToLayerMenu = menu.addMenu(tr("Move %n Object(s) to Layer",
-            "", selectedObjects.size()));
-        for (ObjectGroup *objectGroup : objectGroups) {
+                                                 "", selectedObjects.size()));
+        for (Layer *layer : objectGroups) {
+            ObjectGroup *objectGroup = static_cast<ObjectGroup*>(layer);
             QAction *action = moveToLayerMenu->addAction(objectGroup->name());
             action->setData(QVariant::fromValue(objectGroup));
+            action->setEnabled(objectGroup != sameObjectGroup);
         }
     }
 
     menu.addSeparator();
     QIcon propIcon(QLatin1String(":images/16x16/document-properties.png"));
     QAction *propertiesAction = menu.addAction(propIcon,
-        tr("Object &Properties..."));
+                                               tr("Object &Properties..."));
 
     Utils::setThemeIcon(removeAction, "edit-delete");
     Utils::setThemeIcon(propertiesAction, "document-properties");
@@ -595,6 +558,9 @@ void AbstractObjectTool::showContextMenu(MapObject *clickedObject,
         return;
     }
 
-    if (ObjectGroup *objectGroup = action->data().value<ObjectGroup*>())
+    if (ObjectGroup *objectGroup = action->data().value<ObjectGroup*>()) {
+        const auto selectedObjectsCopy = selectedObjects;
         mapDocument()->moveObjectsToGroup(selectedObjects, objectGroup);
+        mapDocument()->setSelectedObjects(selectedObjectsCopy);
+    }
 }
