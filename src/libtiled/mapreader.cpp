@@ -738,6 +738,7 @@ void MapReaderPrivate::readEnums(Tileset &tileset)
             const QString name = enumAtts.value(QLatin1String("name")).toString();
             QString enumValues = enumAtts.value((QLatin1String("values"))).toString();
             tileset.addEnum(name, enumValues.split(QLatin1String(",")));
+            xml.skipCurrentElement();
         }
     }
 }
