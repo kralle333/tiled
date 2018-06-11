@@ -700,8 +700,31 @@ void Tileset::addEnum(QString enumName, QStringList enumValues)
 
 void Tileset::setEnums(QMap<QString, QStringList> enums)
 {
+    //Remove properties that will be removed
+    for (auto tileElement : mTiles) {
+        for (auto enumElement : mEnums.keys()) {
+            if (!enums.contains(enumElement) &&
+                tileElement->hasProperty(enumElement)) {
+                tileElement->removeProperty(enumElement);
+            }
+        }
+    }
+
+
     mEnums.clear();
     mEnums = enums;
+
+    //Clear previously set values for matching property keys
+    for (auto tileElement : mTiles)
+    {
+        for (auto enumElement : mEnums.keys())
+        {
+            if(tileElement->hasProperty(enumElement))
+            {
+                tileElement->setProperty(enumElement, 0);
+            }
+        }
+    }
 }
 
 /**

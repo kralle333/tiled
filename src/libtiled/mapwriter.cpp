@@ -429,6 +429,11 @@ void MapWriterPrivate::writeTileset(QXmlStreamWriter &w, const Tileset &tileset,
                         if (enums.contains(it.key()))
                         {
                             int enumIndex = it.value().toInt();
+                            if(enumIndex >= enums[it.key()].length())
+                            {
+                                //Property hasn't been set yet, just default to first value
+                                enumIndex = 0;
+                            }
                             mapObjectProperties[it.key()] = enums[it.key()].at(enumIndex);
                         }
                     }

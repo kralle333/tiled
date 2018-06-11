@@ -68,6 +68,7 @@
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMessageBox>
+#include "tileseteditor.h"
 
 namespace Tiled {
 namespace Internal {
@@ -165,6 +166,8 @@ void PropertyBrowser::setDocument(Document *document)
         connect(tilesetDocument, &TilesetDocument::tileProbabilityChanged,
                 this, &PropertyBrowser::tileChanged);
         connect(tilesetDocument, &TilesetDocument::tileImageSourceChanged,
+                this, &PropertyBrowser::tileChanged);
+        connect(tilesetDocument, &TilesetDocument::tileCroppedRectangleChanged,
                 this, &PropertyBrowser::tileChanged);
         connect(tilesetDocument, &TilesetDocument::tileTypeChanged,
                 this, &PropertyBrowser::tileTypeChanged);
@@ -1446,8 +1449,6 @@ QtVariantProperty *PropertyBrowser::createCustomProperty(const QString &name, co
 
     QtVariantProperty* property = createProperty(CustomProperty, type, name);
     property->setValue(value);
-    qDebug() << "creation";
-    qDebug() << property->propertyName() << "," << value;
     if (type == QtVariantPropertyManager::enumTypeId()) {
         property->setAttribute(QLatin1String("enumNames"), Properties::getEnumsWithName(mObject, name));
     }

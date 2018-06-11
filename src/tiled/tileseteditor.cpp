@@ -29,9 +29,11 @@
 #include "changewangcolordata.h"
 #include "enumseditordialog.h"
 #include "erasetiles.h"
+#include "generatecroppedrectangle.h"
 #include "maintoolbar.h"
 #include "mapdocument.h"
 #include "mapobject.h"
+#include "modifyenumlist.h"
 #include "objectgroup.h"
 #include "objecttemplate.h"
 #include "preferences.h"
@@ -653,74 +655,13 @@ void TilesetEditor::openAddTilesDialog()
 }
 
 
-//CroppedBoundsX: Iterate left to right, top down to find the first pixel where alpha!=0
-//Example: Iterating from left to right we find that every column of pixels have alpha=0 until we reach x=3,
-//Therefore for this tile the cropped rectangle bounds starts at x=3
 void TilesetEditor::generateCroppedRectangles()
 {
     Tileset *tileset = currentTileset();
     if (!tileset)
         return;
-
-    int length = tileset->tiles().size();
-    QProgressDialog progress(QLatin1String("Generating Cropped Rectangles..."), QLatin1String("Abort Cropping"), 0, length);
-    progress.setWindowModality(Qt::WindowModal);
-    progress.setValue(0);
-    progress.show();
-
-    QRectF croppedBounds(0, 0, 0, 0);
-    int i = 0;
-    for (Tile* element : tileset->tiles())
-    {
-        const QPixmap tilePixmap = element->image();
-        QImage image = tilePixmap.toImage();
-
-        //X
-        for (int x = 0, nonAlphaPixelFound=false; x <tilePixmap.width() && !nonAlphaPixelFound; ++x) {
-            for (int y = 0; y<tilePixmap.height(); ++y) {
-                nonAlphaPixelFound = image.pixel(x, y) >> 24 != 0;
-                if (nonAlphaPixelFound) {
-                    croppedBounds.setX(x);
-                    break;
-                }
-            }
-        }
-        //Width
-        for (int x = tilePixmap.width()-1, nonAlphaPixelFound = false; x>=0 && !nonAlphaPixelFound; --x) {
-            for (int y = 0; y<tilePixmap.height(); ++y) {
-                nonAlphaPixelFound = image.pixel(x, y) >> 24 != 0;
-                if (nonAlphaPixelFound) {
-                    croppedBounds.setWidth(x-croppedBounds.x());
-                    break;
-                }
-            }
-        }
-        //Y
-        for (int y = 0, nonAlphaPixelFound = false; y <tilePixmap.height() && !nonAlphaPixelFound; ++y) {
-            for (int x = 0; x<tilePixmap.width(); ++x) {
-                nonAlphaPixelFound = image.pixel(x, y) >> 24 != 0;
-                if (nonAlphaPixelFound) {
-                    croppedBounds.setY(y);
-                    break;
-                }
-            }
-        }
-        //Height
-        for (int y = tilePixmap.height() - 1, nonAlphaPixelFound = false; y >= 0 && !nonAlphaPixelFound; --y) {
-            for (int x = 0; x<tilePixmap.width(); ++x) {
-                nonAlphaPixelFound = image.pixel(x, y) >> 24 != 0;
-                if (nonAlphaPixelFound) {
-                    croppedBounds.setHeight(y- croppedBounds.y());
-                    break;
-                }
-            }
-        }
-        element->setCroppedRectangle(croppedBounds);
-        i++;
-        progress.setValue(i);
-        QApplication::processEvents();
-    }
-    saveState();
+    mCurrentTilesetDocument->undoStack()->push(new GenerateCroppedRectangle(tileset));
+    emit mCurrentTilesetDocument->tileCroppedRectangleChanged(mCurrentTile);
 }
 
 void TilesetEditor::editEnumerations()
@@ -730,7 +671,8 @@ void TilesetEditor::editEnumerations()
     int result = dialog->exec();
     if(result == QDialog::Accepted && dialog->wereEnumsChanged())
     {
-        currentTileset()->setEnums(dialog->getEnums());
+        Tileset *tileSet = currentTileset();
+        mCurrentTilesetDocument->undoStack()->push(new ModifyEnumList(tileSet, dialog->getEnums(), tileSet->enums()));
     }
 }
 

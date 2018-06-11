@@ -95,6 +95,7 @@ public:
 
 signals:
     void currentTileChanged(Tile *tile);
+    void tileCroppedRectangleChanged(Tile *tile);
 
 private slots:
     void currentWidgetChanged();

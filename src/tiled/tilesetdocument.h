@@ -122,6 +122,7 @@ signals:
 
     void tileTypeChanged(Tile *tile);
     void tileImageSourceChanged(Tile *tile);
+    void tileCroppedRectangleChanged(Tile *tile);
 
     /**
      * Notifies tileset models about changes to tile terrain information.
