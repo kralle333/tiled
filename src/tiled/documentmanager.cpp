@@ -248,10 +248,20 @@ int DocumentManager::findDocument(const QString &fileName) const
     if (canonicalFilePath.isEmpty()) // file doesn't exist
         return -1;
 
+#ifdef _WIN32
+    const QString toLowerPath = canonicalFilePath.toLower();
+#endif
+
     for (int i = 0; i < mDocuments.size(); ++i) {
         QFileInfo fileInfo(mDocuments.at(i)->fileName());
+        
+#ifdef _WIN32
+        if (toLowerPath == fileInfo.canonicalFilePath().toLower())
+            return i;
+#else
         if (fileInfo.canonicalFilePath() == canonicalFilePath)
             return i;
+#endif
     }
 
     return -1;
