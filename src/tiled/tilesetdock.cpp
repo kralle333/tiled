@@ -1057,8 +1057,6 @@ void TilesetDock::refreshTilesetMenu()
     for (int i = 0; i < mTabBar->count(); ++i)
     {
         bool tabEnabled = !mOnlyShowAllowedTilesets || (mOnlyShowAllowedTilesets && mMapDocument->currentLayer()->canUseTileSet(mTilesets.at(i)));
-        const bool inUse = mMapDocument->map()->isTilesetUsed(mTilesets.at(i).data());
-        tabEnabled = inUse && tabEnabled;
         mTabBar->setTabEnabled(i, tabEnabled);
         if (tabEnabled)
         {
