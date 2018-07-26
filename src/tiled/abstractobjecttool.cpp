@@ -223,24 +223,34 @@ QList<MapObject*> AbstractObjectTool::mapObjectsAt(const QPointF &pos) const
 
 MapObject *AbstractObjectTool::topMostMapObjectAt(const QPointF &pos) const
 {
-    const QList<QGraphicsItem *> &items = mMapScene->items(pos);
+    const QList<QGraphicsItem *>& items = mMapScene->items(pos);
 
-    for (QGraphicsItem *item : items) {
-        MapObjectItem *objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
+    for (QGraphicsItem* item : items){
+        MapObjectItem* objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
 
-        if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked()) {
+        if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked()){
             MapObject* mapObject = objectItem->mapObject();
-            if (mapObject->cell().tile() != nullptr && !mapObject->cell().tile()->imageSource().isEmpty()) {
+            if (mapObject->cell().tile() != nullptr && !mapObject->cell().tile()->imageSource().isEmpty())
+            {
                 //Only return object if object's alpha value is not 0 at the given position
                 QPixmap pixmap = mapObject->cell().tile()->image();
                 float scaleX = pixmap.width() / mapObject->width();
                 float scaleY = pixmap.height() / mapObject->height();
                 QTransform inverseTransform = objectItem->sceneTransform().inverted();
                 QPointF imageLocalPosition = inverseTransform.map(pos);
-                int x = imageLocalPosition.x()*scaleX;
-                int y = (mapObject->height() - -imageLocalPosition.y())*scaleY;
+                int x = imageLocalPosition.x() * scaleX;
+                int y = (mapObject->height() - -imageLocalPosition.y()) * scaleY;
 
-                if (pixmap.toImage().pixel(x, y) >> 24 == 0) {
+                QImage pixMapImage = pixmap.toImage();
+                if (mapObject->cell().flippedHorizontally()){
+                    pixMapImage = pixMapImage.mirrored(true, false);
+                }
+                if (mapObject->cell().flippedVertically()){
+                    pixMapImage = pixMapImage.mirrored(false, true);
+                }
+
+                if (pixMapImage.pixel(x, y) >> 24 == 0)
+                {
                     continue;
                 }
             }
