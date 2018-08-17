@@ -843,6 +843,11 @@ void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
                 if(enums.contains(it.key()))
                 {
                     int enumIndex = it.value().toInt();
+                    if(enumIndex >= enums.count())
+                    {
+                        // Quick fix to ensure enum value is valid
+                        enumIndex = 0;
+                    }
                     mapObjectProperties[it.key()] = enums[it.key()].at(enumIndex);
                 }
             }
