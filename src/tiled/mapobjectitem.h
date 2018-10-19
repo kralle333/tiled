@@ -90,6 +90,7 @@ public:
      * gray.
      */
     static QColor objectColor(const MapObject *object);
+    bool isAlphaZeroAt(const QPointF& pos) const;
 
 private:
     MapDocument *mapDocument() const { return mMapDocument; }

@@ -205,18 +205,24 @@ ObjectGroup *AbstractObjectTool::currentObjectGroup() const
     return dynamic_cast<ObjectGroup*>(mapDocument()->currentLayer());
 }
 
-QList<MapObject*> AbstractObjectTool::mapObjectsAt(const QPointF &pos) const
+QList<MapObject*> AbstractObjectTool::mapObjectsAt(const QPointF &pos,bool ignoreAlpha) const
 {
-    const QList<QGraphicsItem *> &items = mMapScene->items(pos);
+    const QList<QGraphicsItem *>& items = mMapScene->items(pos);
 
     QList<MapObject*> objectList;
-    for (auto item : items) {
+    for (auto item : items)
+    {
         if (!item->isEnabled())
             continue;
 
-        MapObjectItem *objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
+        MapObjectItem* objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
+
         if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked())
+        {
+            if (!ignoreAlpha && objectItem->isAlphaZeroAt(pos))
+                continue;
             objectList.append(objectItem->mapObject());
+        }
     }
     return objectList;
 }
@@ -229,30 +235,9 @@ MapObject *AbstractObjectTool::topMostMapObjectAt(const QPointF &pos) const
         MapObjectItem* objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
 
         if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked()){
-            MapObject* mapObject = objectItem->mapObject();
-            if (mapObject->cell().tile() != nullptr && !mapObject->cell().tile()->imageSource().isEmpty())
+            if (objectItem->isAlphaZeroAt(pos))
             {
-                //Only return object if object's alpha value is not 0 at the given position
-                QPixmap pixmap = mapObject->cell().tile()->image();
-                float scaleX = pixmap.width() / mapObject->width();
-                float scaleY = pixmap.height() / mapObject->height();
-                QTransform inverseTransform = objectItem->sceneTransform().inverted();
-                QPointF imageLocalPosition = inverseTransform.map(pos);
-                int x = imageLocalPosition.x() * scaleX;
-                int y = (mapObject->height() - -imageLocalPosition.y()) * scaleY;
-
-                QImage pixMapImage = pixmap.toImage();
-                if (mapObject->cell().flippedHorizontally()){
-                    pixMapImage = pixMapImage.mirrored(true, false);
-                }
-                if (mapObject->cell().flippedVertically()){
-                    pixMapImage = pixMapImage.mirrored(false, true);
-                }
-
-                if (pixMapImage.pixel(x, y) >> 24 == 0)
-                {
-                    continue;
-                }
+                continue;
             }
             return objectItem->mapObject();
         }

@@ -693,7 +693,7 @@ void ObjectSelectionTool::mouseReleased(QGraphicsSceneMouseEvent* event)
         const Qt::KeyboardModifiers modifiers = event->modifiers();
         QList<MapObject*> selection = mapDocument()->selectedObjects();
         if (modifiers & Qt::AltModifier) {
-            const auto underlyingObjects = mapObjectsAt(event->scenePos());
+            const auto underlyingObjects = mapObjectsAt(event->scenePos(),false);
             if (underlyingObjects.isEmpty())
                 break;
 
@@ -703,6 +703,7 @@ void ObjectSelectionTool::mouseReleased(QGraphicsSceneMouseEvent* event)
                 MapObject* underlyingObject = underlyingObjects.at(i);
                 if (selection.contains(underlyingObject))
                     break;
+
                 nextObject = underlyingObject;
             }
 
