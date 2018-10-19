@@ -227,21 +227,27 @@ QList<MapObject*> AbstractObjectTool::mapObjectsAt(const QPointF &pos,bool ignor
     return objectList;
 }
 
-MapObject *AbstractObjectTool::topMostMapObjectAt(const QPointF &pos) const
+MapObject* AbstractObjectTool::topMostMapObjectAt(const QPointF& pos) const
 {
     const QList<QGraphicsItem *>& items = mMapScene->items(pos);
 
-    for (QGraphicsItem* item : items){
+    for (QGraphicsItem* item : items)
+    {
         MapObjectItem* objectItem = qgraphicsitem_cast<MapObjectItem*>(item);
-
-        if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked()){
-            if (objectItem->isAlphaZeroAt(pos))
+        if (objectItem != nullptr)
+        {
+            MapObject* mapObject = objectItem->mapObject();
+            if (mapObject->cell().tile() != nullptr && !mapObject->cell().tile()->imageSource().isEmpty())
             {
-                continue;
+                if (objectItem->isAlphaZeroAt(pos))
+                {
+                    continue;
+                }
             }
             return objectItem->mapObject();
         }
     }
+
     return nullptr;
 }
 

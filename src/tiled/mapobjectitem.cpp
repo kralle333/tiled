@@ -147,15 +147,13 @@ QColor MapObjectItem::objectColor(const MapObject *object)
 
 bool MapObjectItem::isAlphaZeroAt(const QPointF& pos) const
 {
-    if(mObject->cell().tile() == nullptr ||
-       mObject->cell().tile()->imageSource().isEmpty())
+    if (mObject->cell().tile() == nullptr ||
+        mObject->cell().tile()->imageSource().isEmpty())
     {
         return true;
     }
     //Only return object if object's alpha value is not 0 at the given position
-    auto a = mObject->cell();
-    auto b = mObject->cell().tile();
-    QPixmap pixmap =b->image();
+    QPixmap pixmap = mObject->cell().tile()->image();
     float scaleX = pixmap.width() / mObject->width();
     float scaleY = pixmap.height() / mObject->height();
     QPointF imageLocalPosition = sceneTransform().inverted().map(pos);
@@ -163,10 +161,12 @@ bool MapObjectItem::isAlphaZeroAt(const QPointF& pos) const
     int y = (mObject->height() - -imageLocalPosition.y()) * scaleY;
 
     QImage pixMapImage = pixmap.toImage();
-    if (mObject->cell().flippedHorizontally()) {
+    if (mObject->cell().flippedHorizontally())
+    {
         pixMapImage = pixMapImage.mirrored(true, false);
     }
-    if (mObject->cell().flippedVertically()) {
+    if (mObject->cell().flippedVertically())
+    {
         pixMapImage = pixMapImage.mirrored(false, true);
     }
 
