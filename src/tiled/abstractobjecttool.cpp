@@ -237,7 +237,11 @@ MapObject* AbstractObjectTool::topMostMapObjectAt(const QPointF& pos) const
         if (objectItem != nullptr)
         {
             MapObject* mapObject = objectItem->mapObject();
-            if (mapObject->cell().tile() != nullptr && !mapObject->cell().tile()->imageSource().isEmpty())
+            if(mapObject == nullptr || !mapObject->objectGroup()->isUnlocked())
+            {
+                continue;
+            }
+            if (mapObject->cell().tile() != nullptr && !mapObject->cell().tile()->imageSource().isEmpty() && mapObject->objectGroup()->isUnlocked())
             {
                 if (objectItem->isAlphaZeroAt(pos))
                 {
