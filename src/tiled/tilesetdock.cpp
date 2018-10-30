@@ -140,9 +140,15 @@ public:
     {
         int index = currentIndex();
         if (index != -1) {
-            index += event->delta() > 0 ? -1 : 1;
-            if (index >= 0 && index < count())
-                setCurrentIndex(index);
+            int delta = event->delta() > 0 ? -1 : 1;
+            while(index >= 0 && index < count())
+            {
+                index += delta;
+                if (isTabEnabled(index)) {
+                    setCurrentIndex(index);
+                    break;
+                }                
+            }
         }
     }
 };
@@ -300,7 +306,7 @@ TilesetDock::TilesetDock(QWidget *parent)
             this, &TilesetDock::refreshTilesetMenu);
 
     mTilesetMenuButton->setMenu(mTilesetMenu);
-    connect(mTilesetMenu, SIGNAL(aboutToShow()), SLOT(refreshTilesetMenu()));
+    connect(mTilesetMenu, &QMenu::aboutToShow, this, &TilesetDock::refreshTilesetMenu);
 
     setWidget(w);
     retranslateUi();
@@ -372,25 +378,26 @@ void TilesetDock::selectTilesInStamp(const TileStamp &stamp)
     QMap<QItemSelectionModel*, QItemSelection> selections;
 
     for (const TileStampVariation &variation : stamp.variations()) {
-        const TileLayer &tileLayer = *variation.tileLayer();
-        for (const Cell &cell : tileLayer) {
-            if (Tile *tile = cell.tile()) {
-                if (processed.contains(tile))
-                    continue;
+        for (auto layer : variation.map->tileLayers()) {
+            for (const Cell &cell : *static_cast<TileLayer*>(layer)) {
+                if (Tile *tile = cell.tile()) {
+                    if (processed.contains(tile))
+                        continue;
 
-                processed.insert(tile); // avoid spending time on duplicates
+                    processed.insert(tile); // avoid spending time on duplicates
 
-                Tileset *tileset = tile->tileset();
-                int tilesetIndex = mTilesets.indexOf(tileset->sharedPointer());
-                if (tilesetIndex != -1) {
-                    TilesetView *view = tilesetViewAt(tilesetIndex);
-                    if (!view->model()) // Lazily set up the model
-                        setupTilesetModel(view, tileset);
+                    Tileset *tileset = tile->tileset();
+                    int tilesetIndex = mTilesets.indexOf(tileset->sharedPointer());
+                    if (tilesetIndex != -1) {
+                        TilesetView *view = tilesetViewAt(tilesetIndex);
+                        if (!view->model()) // Lazily set up the model
+                            setupTilesetModel(view, tileset);
 
-                    const TilesetModel *model = view->tilesetModel();
-                    const QModelIndex modelIndex = model->tileIndex(tile);
-                    QItemSelectionModel *selectionModel = view->selectionModel();
-                    selections[selectionModel].select(modelIndex, modelIndex);
+                        const TilesetModel *model = view->tilesetModel();
+                        const QModelIndex modelIndex = model->tileIndex(tile);
+                        QItemSelectionModel *selectionModel = view->selectionModel();
+                        selections[selectionModel].select(modelIndex, modelIndex);
+                    }
                 }
             }
         }
@@ -656,14 +663,14 @@ void TilesetDock::removeTileset()
 {
     const int currentIndex = mViewStack->currentIndex();
     if (currentIndex != -1)
-        removeTileset(mViewStack->currentIndex());
+        removeTilesetAt(mViewStack->currentIndex());
 }
 
 /**
  * Removes the tileset at the given index. Prompting the user when the tileset
  * is in use by the map.
  */
-void TilesetDock::removeTileset(int index)
+void TilesetDock::removeTilesetAt(int index)
 {
     auto &sharedTileset = mTilesets.at(index);
 
@@ -705,6 +712,8 @@ void TilesetDock::removeTileset(int index)
     undoStack->push(remove);
     if (inUse)
         undoStack->endMacro();
+
+    refreshTilesetMenu();
 }
 
 void TilesetDock::newTileset()
@@ -832,12 +841,11 @@ void TilesetDock::onCurrentLayerChanged(Layer *layer)
 void TilesetDock::onTabMoved(int from, int to)
 {
 #if QT_VERSION >= 0x050600
-    //mTilesets.move(from, to);
+    mTilesets.move(from, to);
 #else
     mTilesets.insert(to, mTilesets.takeAt(from));
 #endif
-    //mTilesetDocuments.move(from, to);
-
+    mTilesetDocuments.move(from, to);
     // Move the related tileset view
     const QSignalBlocker blocker(mViewStack);
     QWidget *widget = mViewStack->widget(from);
@@ -1046,20 +1054,21 @@ void TilesetDock::refreshTilesetMenu()
 
     const int currentIndex = mTabBar->currentIndex();
     QVector<QTabWidget> tabsToRemove;
-    for (int i = 0; i < mTabBar->count(); ++i) {
-        if (mOnlyShowAllowedTilesets) {
-            mTabBar->setTabEnabled(i, mMapDocument->currentLayer()->canUseTileSet(mTilesets.at(i)));
-        } else {
-            mTabBar->setTabEnabled(i, true);
+    for (int i = 0; i < mTabBar->count(); ++i)
+    {
+        bool tabEnabled = !mOnlyShowAllowedTilesets || (mOnlyShowAllowedTilesets && mMapDocument->currentLayer()->canUseTileSet(mTilesets.at(i)));
+        mTabBar->setTabEnabled(i, tabEnabled);
+        if (tabEnabled)
+        {
+            QAction* action = mTilesetMenu->addAction(mTabBar->tabText(i));
+            connect(action, &QAction::triggered, [=] { mTabBar->setCurrentIndex(i); });
+
+            action->setCheckable(false);
+
+            mTilesetActionGroup->addAction(action);
+            if (i == currentIndex)
+                action->setChecked(true);
         }
- 		QAction *action = mTilesetMenu->addAction(mTabBar->tabText(i));
-        connect(action, &QAction::triggered, [=] { mTabBar->setCurrentIndex(i); });
-
-        action->setCheckable(false);
-
-        mTilesetActionGroup->addAction(action);
-        if (i == currentIndex)
-            action->setChecked(true);
     }
     //Sorting of tabs disabled for now as the tab index is used for indexing in document and tileset lists
     //if (mOnlyShowAllowedTilesets)
@@ -1071,14 +1080,15 @@ void TilesetDock::refreshTilesetMenu()
     //        {
     //            if (!mTabBar->isTabEnabled(i) && mTabBar->isTabEnabled(j))
     //            {
-    //                mTabBar->moveTab(j, i);
+    //                moveTilesetView(j, i);
     //            }
     //        }
     //    }
     //    if(!mTabBar->isTabEnabled(mTabBar->currentIndex()))
     //    {
-    //        mTabBar->setCurrentIndex(0);  
+    //        //mTabBar->setCurrentIndex(0);  
     //    }
+    //    mTilesetDocumentsFilterModel->sort(0);
     //}
 }
 

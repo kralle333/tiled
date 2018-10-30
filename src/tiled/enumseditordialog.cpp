@@ -23,7 +23,7 @@
 
 using namespace Tiled::Internal;
 
-EnumsEditorDialog::EnumsEditorDialog(QWidget *parent) :
+EnumsEditorDialog::EnumsEditorDialog(QWidget* parent) :
     QDialog(parent),
     mEnumsWereChanged(false),
     mUi(new Ui::EnumsEditorDialog)
@@ -35,8 +35,13 @@ EnumsEditorDialog::EnumsEditorDialog(QWidget *parent) :
     connect(mUi->removeEnumButton, SIGNAL(clicked()), SLOT(removeEnumButtonClicked()));
     connect(mUi->addEnumValueButton, SIGNAL(clicked()), SLOT(addEnumValueButtonClicked()));
     connect(mUi->removeEnumValueButton, SIGNAL(clicked()), SLOT(removeEnumValueButtonClicked()));
-    connect(mUi->enumsList, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)), SLOT(currentItemChanged(QListWidgetItem*,QListWidgetItem*)));
+    connect(mUi->enumsList, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
+            SLOT(currentItemChanged(QListWidgetItem*,QListWidgetItem*)));
+    connect(mUi->enumValuesList, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)), SLOT(toggleAddRemoveButtons()));
 
+    mUi->removeEnumButton->setDisabled(true);
+    mUi->addEnumValueButton->setDisabled(true);
+    mUi->removeEnumValueButton->setDisabled(true);
 }
 
 EnumsEditorDialog::~EnumsEditorDialog()
@@ -57,26 +62,31 @@ QMap<QString, QStringList> EnumsEditorDialog::getEnums()
 void EnumsEditorDialog::removeEnumButtonClicked()
 {
     QListWidgetItem* currentItem = selectedItem();
-    if(currentItem)
-    {        
+    if (currentItem)
+    {
         mEnums.remove(currentItem->text());
-        while (mUi->enumValuesList->count()>0) {
+        while (mUi->enumValuesList->count() > 0)
+        {
             mUi->enumValuesList->takeItem(0);
         }
         qDeleteAll(mUi->enumsList->selectedItems());
         mEnumsWereChanged = true;
     }
 }
+
 void EnumsEditorDialog::addEnumButtonClicked()
 {
     bool ok;
-    QString newEnum = QInputDialog::getText(this, tr("Add New Enum"), tr("Enum Name"), QLineEdit::Normal,tr("name"), &ok);
+    QString newEnum = QInputDialog::getText(this, tr("Add New Enum"), tr("Enum Name"), QLineEdit::Normal, tr("name"),
+                                            &ok);
 
-    if(ok && !newEnum.isEmpty() && mUi->enumsList->findItems(newEnum,Qt::MatchExactly).isEmpty())
+    if (ok && !newEnum.isEmpty() && mUi->enumsList->findItems(newEnum, Qt::MatchExactly).isEmpty())
     {
         mUi->enumsList->addItem(newEnum);
         mEnums[newEnum] = QStringList();
         mEnumsWereChanged = true;
+        QListWidgetItem* newItem = mUi->enumsList->findItems(newEnum, Qt::MatchExactly).first();
+        mUi->enumsList->setCurrentItem(newItem);
     }
 }
 
@@ -90,41 +100,51 @@ void EnumsEditorDialog::removeEnumValueButtonClicked()
         mEnumsWereChanged = true;
     }
 }
+
 void EnumsEditorDialog::addEnumValueButtonClicked()
 {
-    bool ok;
-    QString newEnumValue = QInputDialog::getText(this, tr("Add New Enum Value"), tr("Enum Value Name"), QLineEdit::Normal, tr("name"), &ok);
+    if (mUi->enumsList->currentItem() == nullptr)
+        return;
 
-    if (ok && !newEnumValue.isEmpty()) {
+    bool ok;
+    QString newEnumValue = QInputDialog::getText(this, tr("Add New Enum Value"), tr("Enum Value Name"),
+                                                 QLineEdit::Normal, tr("name"), &ok);
+
+    if (ok && !newEnumValue.isEmpty())
+    {
         QString selectedEnum = selectedItemText();
         QStringList values = mEnums[selectedEnum];
-        if(!values.contains(newEnumValue))
+        if (!values.contains(newEnumValue))
         {
-            mUi->enumValuesList->addItem(newEnumValue);        
+            mUi->enumValuesList->addItem(newEnumValue);
             mEnums[selectedEnum].append(newEnumValue);
             mEnumsWereChanged = true;
+            QListWidgetItem* newItem = mUi->enumValuesList->findItems(newEnumValue, Qt::MatchExactly).first();
+            mUi->enumValuesList->setCurrentItem(newItem);
+            mUi->removeEnumValueButton->setDisabled(false);
         }
     }
 }
 
 void EnumsEditorDialog::currentItemChanged(QListWidgetItem* current, QListWidgetItem* previous)
 {
-    while (mUi->enumValuesList->count()>0) 
+    while (mUi->enumValuesList->count() > 0)
         mUi->enumValuesList->takeItem(0);
 
-    if(current)
-    {        
+    if (current)
+    {
         for (QString enumValue : mEnums[current->text()])
         {
             mUi->enumValuesList->addItem(enumValue);
         }
     }
-
+    toggleAddRemoveButtons();
 }
 
 QString EnumsEditorDialog::selectedItemText()
 {
-    if(mUi->enumsList->count()>0 && mUi->enumsList->currentItem() != nullptr) {
+    if (mUi->enumsList->count() > 0 && mUi->enumsList->currentItem() != nullptr)
+    {
         return mUi->enumsList->currentItem()->text();
     }
     return QString();
@@ -132,19 +152,37 @@ QString EnumsEditorDialog::selectedItemText()
 
 QListWidgetItem* EnumsEditorDialog::selectedItem()
 {
-    if (mUi->enumsList->count() > 0) {
+    if (mUi->enumsList->count() > 0)
+    {
         return mUi->enumsList->currentItem();
     }
     return nullptr;
 }
 
-void EnumsEditorDialog::setEnums(QMap<QString,QStringList> enums)
+void EnumsEditorDialog::setEnums(QMap<QString, QStringList> enums)
 {
     mEnums = enums;
-
+    bool noEnumsWereAdded = true;
     for (auto enumPairs : enums.toStdMap())
     {
         mUi->enumsList->addItem(enumPairs.first);
-    }
+        noEnumsWereAdded = false;
+        if (mUi->enumsList->currentItem() == nullptr)
+        {
+            mUi->enumsList->setCurrentItem(mUi->enumsList->item(0));
+            if(!enumPairs.second.isEmpty())
+            {
+                mUi->enumValuesList->setCurrentItem(mUi->enumValuesList->item(0));
+            }
+        }
+    }    
+    toggleAddRemoveButtons();
     mEnumsWereChanged = false;
+}
+
+void EnumsEditorDialog::toggleAddRemoveButtons()
+{
+    mUi->removeEnumValueButton->setDisabled(mUi->enumValuesList->currentItem() == nullptr);
+    mUi->addEnumValueButton->setDisabled(mUi->enumsList->currentItem() == nullptr);
+    mUi->removeEnumButton->setDisabled(mUi->enumsList->currentItem() == nullptr);
 }

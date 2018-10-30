@@ -37,29 +37,28 @@ using namespace Tiled::Internal;
 
 
 NewMapFromTemplateDialog::NewMapFromTemplateDialog(QWidget *parent) :
-	QDialog(parent),
-	mUi(new Ui::NewMapFromTemplateDialog)
+    QDialog(parent),
+    mUi(new Ui::NewMapFromTemplateDialog)
 {
-	mUi->setupUi(this);
-	setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    mUi->setupUi(this);
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
-	connect(mUi->browseButton, SIGNAL(clicked()), SLOT(openFile()));
-	connect(mUi->overrideSize, SIGNAL(toggled(bool)), SLOT(updateMapSizeWidgets(bool)));
+    connect(mUi->browseButton, SIGNAL(clicked()), SLOT(openFile()));
+    connect(mUi->overrideSize, SIGNAL(toggled(bool)), SLOT(updateMapSizeWidgets(bool)));
     connect(mUi->openedFileRadioButton, SIGNAL(toggled(bool)), SLOT(updateMapFileWidgets(bool)));
     connect(mUi->openfilesComboBox, SIGNAL(currentIndexChanged(QString)), SLOT(comboBoxIndexChanged(QString)));
-	updateMapSizeWidgets(false);
+    updateMapSizeWidgets(false);
     updateMapFileWidgets(true);
-    
-    for(auto document : DocumentManager::instance()->documents())
-    {
-        if(document->type() == Document::MapDocumentType)
+
+    for (auto document : DocumentManager::instance()->documents()) {
+        if (document->type() == Document::MapDocumentType)
             mUi->openfilesComboBox->addItem(document->displayName());
     }
 }
 
 NewMapFromTemplateDialog::~NewMapFromTemplateDialog()
 {
-	delete mUi;
+    delete mUi;
 }
 
 
@@ -71,55 +70,46 @@ void NewMapFromTemplateDialog::openFile()
 
     QString fileName = QFileDialog::getOpenFileName(this, tr("Map File Template"),
                                                     Preferences::instance()->fileDialogStartLocation(), filter);
-    
 
 
-	if (!fileName.isEmpty()) {
-		if (fileName != mPath)
-		{
-			mUi->mappath->setText(fileName);
-			mPath = fileName;
-			mMap = tmxp.read(fileName);
-			mUi->mapWidth->setValue(mMap->width());
-			mUi->mapHeight->setValue(mMap->height());
-		}
-	}
+
+    if (!fileName.isEmpty()) {
+        if (fileName != mPath) {
+            mUi->mappath->setText(fileName);
+            mPath = fileName;
+            mMap = tmxp.read(fileName);
+            mUi->mapWidth->setValue(mMap->width());
+            mUi->mapHeight->setValue(mMap->height());
+        }
+    }
 }
 
 void NewMapFromTemplateDialog::eraseLayerContents(const QList<Layer*> &layers)
 {
-	foreach(Layer *layer, layers)
-	{
-		if (mUi->objectsClearBox->isChecked() && layer->isObjectGroup())
-		{
-			ObjectGroup *a = layer->asObjectGroup();
-			while (!a->isEmpty())
-			{
-				a->removeObjectAt(0);
-			}
-		}
-		else if (mUi->tilesClearBox->isChecked() && layer->isTileLayer())
-		{
-			TileLayer *a = layer->asTileLayer();
-			a->erase(QRegion(0, 0, a->width(), a->height()));
-		}
-		else if (mUi->groupsClearBox->isChecked() && layer->isGroupLayer())
-		{
-			eraseLayerContents((layer->asGroupLayer()->layers()));
-		}
-	}
+    for (auto layerItr = layers.begin(); layerItr != layers.end(); ++layerItr) {
+        Layer *layer = *layerItr;
+        if (mUi->objectsClearBox->isChecked() && layer->isObjectGroup()) {
+            ObjectGroup *a = layer->asObjectGroup();
+            while (!a->isEmpty()) {
+                a->removeObjectAt(0);
+            }
+        } else if (mUi->tilesClearBox->isChecked() && layer->isTileLayer()) {
+            TileLayer *a = layer->asTileLayer();
+            a->erase(QRegion(0, 0, a->width(), a->height()));
+        } else if (mUi->groupsClearBox->isChecked() && layer->isGroupLayer()) {
+            eraseLayerContents((layer->asGroupLayer()->layers()));
+        }
+    }
 
 }
 
 void NewMapFromTemplateDialog::comboBoxIndexChanged(const QString &text)
 {
-    Document *selectedDocument = nullptr;
-    for (Document* const document : DocumentManager::instance()->documents())
-    {
-        if (document->displayName() == text)
-        {
+    DocumentPtr selectedDocument = nullptr;
+    for (DocumentPtr const document : DocumentManager::instance()->documents()) {
+        if (document->displayName() == text) {
             selectedDocument = document;
-            break;            
+            break;
         }
     }
     Q_ASSERT(selectedDocument != nullptr);
@@ -130,33 +120,31 @@ void NewMapFromTemplateDialog::comboBoxIndexChanged(const QString &text)
         mUi->mappath->setText(fileName);
         mPath = fileName;
         mMap = tmxp.read(fileName);
-        if(mMap != nullptr)
-        {            
+        if (mMap != nullptr) {
             mUi->mapWidth->setValue(mMap->width());
             mUi->mapHeight->setValue(mMap->height());
         }
     }
 }
 
-MapDocument *NewMapFromTemplateDialog::createMap()
+MapDocumentPtr NewMapFromTemplateDialog::createMap()
 {
-	if (exec() != QDialog::Accepted)
-		return nullptr;
+    if (exec() != QDialog::Accepted)
+        return nullptr;
 
-	if (mMap == nullptr)
-	{
-		QMessageBox::warning(this, tr("Error"),
-			tr("No Map Template selected!"));
-		return nullptr;
-	}
+    if (mMap == nullptr) {
+        QMessageBox::warning(this, tr("Error"),
+                             tr("No Map Template selected!"));
+        return nullptr;
+    }
 
-	MapDocument *newDocument = new MapDocument(mMap);
+    MapDocument *newDocument = new MapDocument(mMap);
 
-	QSize newSize(mUi->mapWidth->value(), mUi->mapHeight->value());
+    QSize newSize(mUi->mapWidth->value(), mUi->mapHeight->value());
     eraseLayerContents(newDocument->map()->layers());
-	QPoint offset;
-	newDocument->resizeMap(newSize, offset, false);
-	return newDocument;
+    QPoint offset;
+    newDocument->resizeMap(newSize, offset, false);
+    return MapDocumentPtr::create(mMap);
 }
 void NewMapFromTemplateDialog::updateMapFileWidgets(bool checked)
 {
@@ -167,8 +155,8 @@ void NewMapFromTemplateDialog::updateMapFileWidgets(bool checked)
 
 void NewMapFromTemplateDialog::updateMapSizeWidgets(bool checked)
 {
-	mUi->mapHeight->setEnabled(checked);
-	mUi->mapWidth->setEnabled(checked);
-	mUi->heightLabel->setEnabled(checked);
-	mUi->widthLabel->setEnabled(checked);
+    mUi->mapHeight->setEnabled(checked);
+    mUi->mapWidth->setEnabled(checked);
+    mUi->heightLabel->setEnabled(checked);
+    mUi->widthLabel->setEnabled(checked);
 }

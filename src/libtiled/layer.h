@@ -69,6 +69,13 @@ public:
     ~Layer();
 
     /**
+     * The layer ID can be used to unique identify this layer of the map. It
+     * stays the same regardless of whether the layer is moved or renamed.
+     */
+    int id() const { return mId; }
+    void setId(int id) { mId = id; }
+
+    /**
      * Returns the type of this layer.
      */
     TypeFlag layerType() const { return mLayerType; }
@@ -248,6 +255,7 @@ protected:
     Layer *initializeClone(Layer *clone) const;
 
     QString mName;
+    int mId;
     TypeFlag mLayerType;
     int mX;
     int mY;
@@ -308,6 +316,14 @@ public:
     void toFront();
     void toBack();
 
+    // Allow use as general iterator and in range-based for loops
+    bool operator==(const LayerIterator &other) const;
+    bool operator!=(const LayerIterator &other) const;
+    LayerIterator &operator++();
+    LayerIterator operator++(int);
+    Layer *operator*() const;
+    Layer *operator->() const;
+
 private:
     const Map *mMap;
     Layer *mCurrentLayer;
@@ -362,6 +378,34 @@ inline bool LayerIterator::hasPreviousSibling() const
 inline bool LayerIterator::hasParent() const
 {
     return mCurrentLayer && mCurrentLayer->parentLayer();
+}
+
+inline bool LayerIterator::operator!=(const LayerIterator &other) const
+{
+    return !(*this == other);
+}
+
+inline LayerIterator &LayerIterator::operator++()
+{
+    next();
+    return *this;
+}
+
+inline LayerIterator LayerIterator::operator++(int)
+{
+    LayerIterator it = *this;
+    next();
+    return it;
+}
+
+inline Layer *LayerIterator::operator*() const
+{
+    return mCurrentLayer;
+}
+
+inline Layer *LayerIterator::operator->() const
+{
+    return mCurrentLayer;
 }
 
 

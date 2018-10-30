@@ -30,7 +30,6 @@
 #include "changeproperties.h"
 #include "changeselectedarea.h"
 #include "containerhelpers.h"
-#include "documentmanager.h"
 #include "flipmapobjects.h"
 #include "grouplayer.h"
 #include "hexagonalrenderer.h"
@@ -54,6 +53,7 @@
 #include "resizetilelayer.h"
 #include "rotatemapobject.h"
 #include "staggeredrenderer.h"
+#include "templatemanager.h"
 #include "terrain.h"
 #include "tile.h"
 #include "tilelayer.h"
@@ -96,21 +96,24 @@ MapDocument::MapDocument(Map *map, const QString &fileName)
 
     // Forward signals emitted from the map object model
     mMapObjectModel->setMapDocument(this);
-    connect(mMapObjectModel, SIGNAL(objectsAdded(QList<MapObject*>)),
-            SIGNAL(objectsAdded(QList<MapObject*>)));
-    connect(mMapObjectModel, SIGNAL(objectsChanged(QList<MapObject*>)),
-            SIGNAL(objectsChanged(QList<MapObject*>)));
-    connect(mMapObjectModel, SIGNAL(objectsTypeChanged(QList<MapObject*>)),
-            SIGNAL(objectsTypeChanged(QList<MapObject*>)));
-    connect(mMapObjectModel, SIGNAL(objectsRemoved(QList<MapObject*>)),
-            SLOT(onObjectsRemoved(QList<MapObject*>)));
+    connect(mMapObjectModel, &MapObjectModel::objectsAdded,
+            this, &MapDocument::objectsAdded);
+    connect(mMapObjectModel, &MapObjectModel::objectsChanged,
+            this, &MapDocument::objectsChanged);
+    connect(mMapObjectModel, &MapObjectModel::objectsTypeChanged,
+            this, &MapDocument::objectsTypeChanged);
+    connect(mMapObjectModel, &MapObjectModel::objectsRemoved,
+            this, &MapDocument::onObjectsRemoved);
 
-    connect(mMapObjectModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            SLOT(onMapObjectModelRowsInserted(QModelIndex,int,int)));
-    connect(mMapObjectModel, SIGNAL(rowsRemoved(QModelIndex,int,int)),
-            SLOT(onMapObjectModelRowsInsertedOrRemoved(QModelIndex,int,int)));
-    connect(mMapObjectModel, SIGNAL(rowsMoved(QModelIndex,int,int,QModelIndex,int)),
-            SLOT(onObjectsMoved(QModelIndex,int,int,QModelIndex,int)));
+    connect(mMapObjectModel, &QAbstractItemModel::rowsInserted,
+            this, &MapDocument::onMapObjectModelRowsInserted);
+    connect(mMapObjectModel, &QAbstractItemModel::rowsRemoved,
+            this, &MapDocument::onMapObjectModelRowsInsertedOrRemoved);
+    connect(mMapObjectModel, &QAbstractItemModel::rowsMoved,
+            this, &MapDocument::onObjectsMoved);
+
+    connect(TemplateManager::instance(), &TemplateManager::objectTemplateChanged,
+            this, &MapDocument::updateTemplateInstances);
 }
 
 MapDocument::~MapDocument()
@@ -138,9 +141,8 @@ bool MapDocument::save(const QString &fileName, QString *error)
     mLastSaved = QFileInfo(fileName).lastModified();
 
     // Mark TilesetDocuments for embedded tilesets as saved
-    auto documentManager = DocumentManager::instance();
     for (const SharedTileset &tileset : mMap->tilesets()) {
-        if (TilesetDocument *tilesetDocument = documentManager->findTilesetDocument(tileset))
+        if (TilesetDocument *tilesetDocument = TilesetDocument::findDocumentForTileset(tileset))
             if (tilesetDocument->isEmbedded())
                 tilesetDocument->setClean();
     }
@@ -149,19 +151,19 @@ bool MapDocument::save(const QString &fileName, QString *error)
     return true;
 }
 
-MapDocument *MapDocument::load(const QString &fileName,
-                               MapFormat *format,
-                               QString *error)
+MapDocumentPtr MapDocument::load(const QString &fileName,
+                                 MapFormat *format,
+                                 QString *error)
 {
     Map *map = format->read(fileName);
 
     if (!map) {
         if (error)
             *error = format->errorString();
-        return nullptr;
+        return MapDocumentPtr();
     }
 
-    MapDocument *document = new MapDocument(map, fileName);
+    MapDocumentPtr document = MapDocumentPtr::create(map, fileName);
     document->setReaderFormat(format);
     if (format->hasCapabilities(MapFormat::Write))
         document->setWriterFormat(format);
@@ -933,6 +935,16 @@ void MapDocument::unifyTilesets(Map *map, QVector<SharedTileset> &missingTileset
     }
 }
 
+bool MapDocument::templateAllowed(const ObjectTemplate *objectTemplate) const
+{
+    if (!objectTemplate->object())
+        return false;
+    if (objectTemplate->object()->isTileObject() && !mAllowTileObjects)
+        return false;
+
+    return true;
+}
+
 /**
  * Before forwarding the signal, the objects are removed from the list of
  * selected objects, triggering a selectedObjectsChanged signal when
@@ -1046,8 +1058,8 @@ void MapDocument::onLayerRemoved(Layer *layer)
 void MapDocument::updateTemplateInstances(const ObjectTemplate *objectTemplate)
 {
     QList<MapObject*> objectList;
-    for (ObjectGroup *group : mMap->objectGroups()) {
-        for (auto object : group->objects()) {
+    for (Layer *layer : mMap->objectGroups()) {
+        for (auto object : static_cast<ObjectGroup*>(layer)->objects()) {
             if (object->objectTemplate() == objectTemplate) {
                 object->syncWithTemplate();
                 objectList.append(object);
@@ -1060,10 +1072,11 @@ void MapDocument::updateTemplateInstances(const ObjectTemplate *objectTemplate)
 void MapDocument::selectAllInstances(const ObjectTemplate *objectTemplate)
 {
     QList<MapObject*> objectList;
-    for (ObjectGroup *group : mMap->objectGroups())
-        for (auto object : group->objects())
+    for (Layer *layer : mMap->objectGroups()) {
+        for (auto object : static_cast<ObjectGroup*>(layer)->objects())
             if (object->objectTemplate() == objectTemplate)
                 objectList.append(object);
+    }
     setSelectedObjects(objectList);
 }
 
@@ -1159,8 +1172,8 @@ void MapDocument::moveObjectsUp(const QList<MapObject *> &objects)
 
     const auto ranges = computeRanges(objects);
 
-    QScopedPointer<QUndoCommand> command(new QUndoCommand(tr("Move %n Object(s) Up",
-                                                             "", objects.size())));
+    std::unique_ptr<QUndoCommand> command(new QUndoCommand(tr("Move %n Object(s) Up",
+                                                              "", objects.size())));
 
     RangesIterator rangesIterator(ranges);
     while (rangesIterator.hasNext()) {
@@ -1181,13 +1194,13 @@ void MapDocument::moveObjectsUp(const QList<MapObject *> &objects)
             int to = from + count + 1;
 
             if (to <= group->objectCount())
-                new ChangeMapObjectsOrder(this, group, from, to, count, command.data());
+                new ChangeMapObjectsOrder(this, group, from, to, count, command.get());
 
         } while (it != it_begin);
     }
 
     if (command->childCount() > 0)
-        mUndoStack->push(command.take());
+        mUndoStack->push(command.release());
 }
 
 void MapDocument::moveObjectsDown(const QList<MapObject *> &objects)
@@ -1195,8 +1208,8 @@ void MapDocument::moveObjectsDown(const QList<MapObject *> &objects)
     if (objects.isEmpty())
         return;
 
-    QScopedPointer<QUndoCommand> command(new QUndoCommand(tr("Move %n Object(s) Down",
-                                                             "", objects.size())));
+    std::unique_ptr<QUndoCommand> command(new QUndoCommand(tr("Move %n Object(s) Down",
+                                                              "", objects.size())));
 
     RangesIterator rangesIterator(computeRanges(objects));
     while (rangesIterator.hasNext()) {
@@ -1215,13 +1228,13 @@ void MapDocument::moveObjectsDown(const QList<MapObject *> &objects)
                 int to = from - 1;
                 int count = it.length();
 
-                new ChangeMapObjectsOrder(this, group, from, to, count, command.data());
+                new ChangeMapObjectsOrder(this, group, from, to, count, command.get());
             }
         }
     }
 
     if (command->childCount() > 0)
-        mUndoStack->push(command.take());
+        mUndoStack->push(command.release());
 }
 
 void MapDocument::detachObjects(const QList<MapObject *> &objects)

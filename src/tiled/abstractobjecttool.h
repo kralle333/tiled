@@ -71,9 +71,8 @@ protected:
 
     MapScene *mapScene() const { return mMapScene; }
     ObjectGroup *currentObjectGroup() const;
-    QList<MapObject*> mapObjectsAt(const QPointF &pos) const;
+    QList<MapObject*> mapObjectsAt(const QPointF &pos, bool ignoreAlpha = true) const;
     MapObject *topMostMapObjectAt(const QPointF &pos) const;
-    static bool IsAlphaZeroAt(MapObjectItem* objectItem, const QPointF& pos);
 
 private slots:
     void duplicateObjects();

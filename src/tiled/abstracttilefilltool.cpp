@@ -185,10 +185,11 @@ void AbstractTileFillTool::updateRandomListAndMissingTilesets()
         for (const TileStampVariation &variation : mStamp.variations()) {
             mapDocument()->unifyTilesets(variation.map, mMissingTilesets);
             if (mFillMethod == RandomFill) {
-                const TileLayer &tileLayer = *variation.tileLayer();
-                for (const Cell &cell : tileLayer) {
-                    if (const Tile *tile = cell.tile())
-                        mRandomCellPicker.add(cell, tile->probability());
+                for (auto layer : variation.map->tileLayers()) {
+                    for (const Cell &cell : *static_cast<TileLayer*>(layer)) {
+                        if (const Tile *tile = cell.tile())
+                            mRandomCellPicker.add(cell, tile->probability());
+                    }
                 }
             }
         }
@@ -200,7 +201,14 @@ void AbstractTileFillTool::randomFill(TileLayer &tileLayer, const QRegion &regio
     if (region.isEmpty() || mRandomCellPicker.isEmpty())
         return;
 
-    for (const QRect &rect : region.translated(-tileLayer.position()).rects()) {
+    const auto localRegion = region.translated(-tileLayer.position());
+
+#if QT_VERSION < 0x050800
+    const auto rects = localRegion.rects();
+    for (const QRect &rect : rects) {
+#else
+    for (const QRect &rect : localRegion) {
+#endif
         for (int y = rect.top(); y <= rect.bottom(); ++y) {
             for (int x = rect.left(); x <= rect.right(); ++x) {
                 tileLayer.setCell(x, y,
@@ -234,12 +242,16 @@ void AbstractTileFillTool::fillWithStamp(TileLayer &layer,
         return;
 
     const QSize size = stamp.maxSize();
+    if (size.width() == 0 || size.height() == 0)
+        return;
 
     // Fill the entire layer with random variations of the stamp
     for (int y = 0; y < layer.height(); y += size.height()) {
         for (int x = 0; x < layer.width(); x += size.width()) {
-            const TileStampVariation variation = stamp.randomVariation();
-            layer.setCells(x, y, variation.tileLayer());
+            // TODO: Make it work with multi-layer stamps
+            const Map *map = stamp.randomVariation().map;
+            auto tileLayer = static_cast<TileLayer*>(map->layerAt(0));
+            layer.setCells(x, y, tileLayer);
         }
     }
 

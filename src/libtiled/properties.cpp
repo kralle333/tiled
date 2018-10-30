@@ -162,8 +162,6 @@ QString typeToName(int type)
         return QStringLiteral("float");
     case QVariant::Color:
         return QStringLiteral("color");
-    case QVariant::StringList:
-        return QStringLiteral("stringlist");
     default:
         if (type == filePathTypeId())
             return QStringLiteral("file");
@@ -179,8 +177,6 @@ int nameToType(const QString &name)
         return QVariant::Double;
     if (name == QLatin1String("color"))
         return QVariant::Color;
-    if (name == QLatin1String("stringlist"))
-        return QVariant::StringList;
     if (name == QLatin1String("file"))
         return filePathTypeId();
 

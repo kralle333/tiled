@@ -22,6 +22,7 @@
 
 #include <QDialog>
 #include "map.h"
+#include "mapdocument.h"
 
 namespace Ui {
 	class NewMapFromTemplateDialog;
@@ -47,7 +48,7 @@ namespace Internal {
 		* Shows the dialog and returns the created map. Returns null if the dialog
 		* was cancelled.
 		*/
-		MapDocument *createMap();
+        MapDocumentPtr createMap();
 
 	private slots:
 		void eraseLayerContents(const QList<Layer*> &layers);

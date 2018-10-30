@@ -244,6 +244,8 @@ void MapWriterPrivate::writeMap(QXmlStreamWriter &w, const Map &map)
                          colorToString(map.backgroundColor()));
     }
 
+    w.writeAttribute(QLatin1String("nextlayerid"),
+                     QString::number(map.nextLayerId()));
     w.writeAttribute(QLatin1String("nextobjectid"),
                      QString::number(map.nextObjectId()));
 
@@ -252,9 +254,12 @@ void MapWriterPrivate::writeMap(QXmlStreamWriter &w, const Map &map)
     mGidMapper.clear();
     unsigned firstGid = 1;
     for (const SharedTileset &tileset : map.tilesets()) {
-        writeTileset(w, *tileset, firstGid);
-        mGidMapper.insert(firstGid, tileset);
-        firstGid += tileset->nextTileId();
+        if(map.isTilesetUsed(tileset.data()))
+        {
+            writeTileset(w, *tileset, firstGid);
+            mGidMapper.insert(firstGid, tileset);
+            firstGid += tileset->nextTileId();            
+        }
     }
 
     writeLayers(w, map.layers());
@@ -412,7 +417,35 @@ void MapWriterPrivate::writeTileset(QXmlStreamWriter &w, const Tileset &tileset,
             if (tile->probability() != 1.0)
                 w.writeAttribute(QLatin1String("probability"), QString::number(tile->probability()));
             if (!tile->properties().isEmpty())
-                writeProperties(w, tile->properties());
+            {
+                //Copy properties so we can edit them
+                Properties mapObjectProperties;
+                mapObjectProperties.merge(tile->properties());
+
+                //Convert enum properties from int to strings
+                auto enums = tileset.enums();
+
+                if (enums.count() > 0)
+                {
+                    Properties::const_iterator it = tile->properties().constBegin();
+                    Properties::const_iterator it_end = tile->properties().constEnd();
+                    for (; it != it_end; ++it)
+                    {
+                        if (enums.contains(it.key()))
+                        {
+                            int enumIndex = it.value().toInt();
+                            if(enumIndex >= enums[it.key()].length())
+                            {
+                                //Property hasn't been set yet, just default to first value
+                                enumIndex = 0;
+                            }
+                            mapObjectProperties[it.key()] = enums[it.key()].at(enumIndex);
+                        }
+                    }
+                }
+
+                writeProperties(w, mapObjectProperties);
+            }
             if (imageSource.isEmpty()) {
                 w.writeStartElement(QLatin1String("image"));
 
@@ -675,6 +708,8 @@ void MapWriterPrivate::writeTileLayerData(QXmlStreamWriter &w,
 void MapWriterPrivate::writeLayerAttributes(QXmlStreamWriter &w,
                                             const Layer &layer)
 {
+    if (layer.id() != 0)
+        w.writeAttribute(QLatin1String("id"), QString::number(layer.id()));
     if (!layer.name().isEmpty())
         w.writeAttribute(QLatin1String("name"), layer.name());
 
@@ -810,6 +845,11 @@ void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
                 if(enums.contains(it.key()))
                 {
                     int enumIndex = it.value().toInt();
+                    if(enumIndex >= enums[it.key()].count())
+                    {
+                        // Quick fix to ensure enum value is valid
+                        enumIndex = 0;
+                    }
                     mapObjectProperties[it.key()] = enums[it.key()].at(enumIndex);
                 }
             }
@@ -969,7 +1009,7 @@ void MapWriterPrivate::writeProperties(QXmlStreamWriter &w,
 
         int type = it.value().userType();
         QString typeName = typeToName(type);
-        if (typeName != QLatin1String("string"))
+        if (typeName != QLatin1String("string")) 
             w.writeAttribute(QLatin1String("type"), typeName);
 
         QVariant exportValue = mUseAbsolutePaths ? toExportValue(it.value())

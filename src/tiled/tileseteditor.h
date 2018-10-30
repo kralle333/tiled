@@ -44,6 +44,7 @@ class Tileset;
 namespace Internal {
 
 class PropertiesDock;
+class TemplatesDock;
 class TerrainDock;
 class TileAnimationEditor;
 class TileCollisionDock;
@@ -94,6 +95,7 @@ public:
 
 signals:
     void currentTileChanged(Tile *tile);
+    void tileCroppedRectangleChanged(Tile *tile);
 
 private slots:
     void currentWidgetChanged();
@@ -156,6 +158,7 @@ private:
     UndoDock *mUndoDock;
     TerrainDock *mTerrainDock;
     TileCollisionDock *mTileCollisionDock;
+    TemplatesDock *mTemplatesDock;
     WangDock *mWangDock;
     QComboBox *mZoomComboBox;
     QLabel *mStatusInfoLabel;

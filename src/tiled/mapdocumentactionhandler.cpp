@@ -470,7 +470,22 @@ void MapDocumentActionHandler::copyPosition()
                                        QString::number(y));
 }
 
-void MapDocumentActionHandler::cropToSelection()
+void MapDocumentActionHandler::focusOnCurrentObject()
+{
+    if(Object *object = mMapDocument->currentObject())
+    {
+        if(object->typeId() == Object::MapObjectType)
+        {
+            MapObject *mapObject = static_cast<MapObject*>(object);
+            const QPointF center = mapObject->bounds().center();
+            const QPointF offset = mapObject->objectGroup()->totalOffset();
+            DocumentManager::instance()->centerMapViewOn(center + offset);
+        }
+    }
+}
+
+
+    void MapDocumentActionHandler::cropToSelection()
 {
     if (!mMapDocument)
         return;
@@ -661,7 +676,9 @@ void MapDocumentActionHandler::toggleOtherLayers()
 }
 void MapDocumentActionHandler::tilesetsAllowed()
 {
+        
     QScopedPointer<SetAllowedTilesetsDialog> dialog(new SetAllowedTilesetsDialog);
+
     dialog->populateTilesetLists(mMapDocument->map()->tilesets(), mMapDocument->currentLayer()->getAllowedTilesets());
 
     int result = dialog->exec();

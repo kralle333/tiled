@@ -24,11 +24,11 @@
 #pragma once
 
 #include "mapdocument.h"
+#include "mapitem.h"
 
 #include <QColor>
 #include <QGraphicsScene>
-#include <QMap>
-#include <QSet>
+#include <QHash>
 
 namespace Tiled {
 
@@ -46,7 +46,6 @@ class LayerItem;
 class MapDocument;
 class MapObjectItem;
 class MapScene;
-class MapItem;
 class ObjectGroupItem;
 
 /**
@@ -93,7 +92,6 @@ private slots:
 
     void mapChanged();
     void repaintTileset(Tileset *tileset);
-    void tileLayerChanged(TileLayer *, MapDocument::TileLayerChangeFlags flags);
 
     void layerChanged(Layer *);
 
@@ -106,10 +104,13 @@ private:
     void updateDefaultBackgroundColor();
     void updateSceneRect();
 
+    MapItem *takeOrCreateMapItem(const MapDocumentPtr &mapDocument,
+                                 MapItem::DisplayMode displayMode);
+
     bool eventFilter(QObject *object, QEvent *event) override;
 
     MapDocument *mMapDocument;
-    MapItem *mMapItem;
+    QHash<MapDocument*, MapItem*> mMapItems;
     AbstractTool *mSelectedTool;
     AbstractTool *mActiveTool;
     bool mGridVisible;

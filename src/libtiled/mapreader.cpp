@@ -52,6 +52,8 @@
 #include <QVector>
 #include <QXmlStreamReader>
 
+#include <memory>
+
 using namespace Tiled;
 using namespace Tiled::Internal;
 
@@ -141,7 +143,7 @@ private:
 
     QString mError;
     QDir mPath;
-    QScopedPointer<Map> mMap;
+    std::unique_ptr<Map> mMap;
     GidMapper mGidMapper;
     bool mReadingExternalTileset;
 
@@ -273,14 +275,16 @@ Map *MapReaderPrivate::readMap()
     const Map::RenderOrder renderOrder =
         renderOrderFromString(renderOrderString);
 
-    const int nextObjectId =
-        atts.value(QLatin1String("nextobjectid")).toInt();
+    const int nextLayerId = atts.value(QLatin1String("nextlayerid")).toInt();
+    const int nextObjectId = atts.value(QLatin1String("nextobjectid")).toInt();
 
     mMap.reset(new Map(orientation, mapWidth, mapHeight, tileWidth, tileHeight, infinite));
     mMap->setHexSideLength(hexSideLength);
     mMap->setStaggerAxis(staggerAxis);
     mMap->setStaggerIndex(staggerIndex);
     mMap->setRenderOrder(renderOrder);
+    if (nextLayerId)
+        mMap->setNextLayerId(nextLayerId);
     if (nextObjectId)
         mMap->setNextObjectId(nextObjectId);
 
@@ -325,7 +329,7 @@ Map *MapReaderPrivate::readMap()
         }
 
         // Fix up sizes of tile objects. This is for backwards compatibility.
-        LayerIterator iterator(mMap.data());
+        LayerIterator iterator(mMap.get());
         while (Layer *layer = iterator.next()) {
             if (ObjectGroup *objectGroup = layer->asObjectGroup()) {
                 for (MapObject *object : *objectGroup) {
@@ -341,7 +345,7 @@ Map *MapReaderPrivate::readMap()
         }
     }
 
-    return mMap.take();
+    return mMap.release();
 }
 
 SharedTileset MapReaderPrivate::readTileset()
@@ -472,16 +476,15 @@ void MapReaderPrivate::readTilesetTile(Tileset &tileset)
         } else if (xml.name() == QLatin1String("image")) {
             ImageReference imageReference = readImage();
             if (imageReference.hasImage()) {
-                QImage image = imageReference.create();
+                QPixmap image = imageReference.create();
                 if (image.isNull()) {
                     if (imageReference.source.isEmpty())
                         xml.raiseError(tr("Error reading embedded image for tile %1").arg(id));
                 }
                 tile->setCroppedRectangle(imageReference.croppedRectangle);
-                tileset.setTileImage(tile, QPixmap::fromImage(image),
-                                     imageReference.source);
+                tileset.setTileImage(tile, image, imageReference.source);
             }
-        }else if (xml.name() == QLatin1String("objectgroup")) {
+        } else if (xml.name() == QLatin1String("objectgroup")) {
             ObjectGroup *objectGroup = readObjectGroup();
             if (objectGroup) {
                 // Migrate properties from the object group to the tile. Since
@@ -679,7 +682,7 @@ void MapReaderPrivate::readTilesetWangSets(Tileset &tileset)
                 } else if (xml.name() == QLatin1String("wangtile")) {
                     const QXmlStreamAttributes tileAtts = xml.attributes();
                     int tileId = tileAtts.value(QLatin1String("tileid")).toInt();
-                    unsigned wangId = tileAtts.value(QLatin1String("wangid")).toUInt(nullptr, 16);
+                    WangId wangId = tileAtts.value(QLatin1String("wangid")).toUInt(nullptr, 16);
 
                     if (!wangSet->wangIdIsValid(wangId)) {
                         xml.raiseError(QLatin1String("Invalid wangId given for tileId: ") + QString::number(tileId));
@@ -732,14 +735,13 @@ void MapReaderPrivate::readEnums(Tileset &tileset)
 {
     Q_ASSERT(xml.isStartElement() && xml.name() == QLatin1String("enums"));
 
-    while (xml.readNextStartElement())
-    {
-        if (xml.name() == QLatin1String("enum"))
-        {
+    while (xml.readNextStartElement()) {
+        if (xml.name() == QLatin1String("enum")) {
             const QXmlStreamAttributes enumAtts = xml.attributes();
             const QString name = enumAtts.value(QLatin1String("name")).toString();
             QString enumValues = enumAtts.value((QLatin1String("values"))).toString();
             tileset.addEnum(name, enumValues.split(QLatin1String(",")));
+            xml.skipCurrentElement();
         }
     }
 }
@@ -747,11 +749,16 @@ void MapReaderPrivate::readEnums(Tileset &tileset)
 static void readLayerAttributes(Layer &layer,
                                 const QXmlStreamAttributes &atts)
 {
+    const QStringRef idRef = atts.value(QLatin1String("id"));
     const QStringRef opacityRef = atts.value(QLatin1String("opacity"));
     const QStringRef visibleRef = atts.value(QLatin1String("visible"));
     const QStringRef lockedRef = atts.value(QLatin1String("locked"));
 
     bool ok;
+    const int id = idRef.toInt(&ok);
+    if (ok)
+        layer.setId(id);
+
     const qreal opacity = opacityRef.toDouble(&ok);
     if (ok)
         layer.setOpacity(opacity);
@@ -1055,7 +1062,7 @@ void MapReaderPrivate::readImageLayerImage(ImageLayer &imageLayer)
 
     QUrl sourceUrl = toUrl(source, mPath);
 
-    imageLayer.loadFromImage(QImage(sourceUrl.toLocalFile()), sourceUrl);
+    imageLayer.loadFromImage(sourceUrl);
 
     xml.skipCurrentElement();
 }
@@ -1114,7 +1121,7 @@ MapObject *MapReaderPrivate::readObject()
     while (xml.readNextStartElement()) {
         if (xml.name() == QLatin1String("properties")) {
             Properties properties = readProperties();
-            properties = convertEnumValuesToInt(properties,object);
+            properties = convertEnumValuesToInt(properties, object);
             object->mergeProperties(properties);
         } else if (xml.name() == QLatin1String("polygon")) {
             object->setPolygon(readPolygon());
@@ -1146,7 +1153,7 @@ MapObject *MapReaderPrivate::readObject()
     return object;
 }
 
-Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties,MapObject *object)
+Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties, MapObject *object)
 {
     if (!object->cell().tileset())
         return properties;
@@ -1157,16 +1164,11 @@ Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties,MapO
 
     //Compare property keys with keys in the enums list.
     //If a match is found, convert the enum string value to the correct index
-    for (auto it = properties.constBegin(); it != properties.constEnd(); ++it)
-    {
-        for (auto item : enums.toStdMap())
-        {
-            if (it.key() == item.first)
-            {
-                for (int i = 0; i < item.second.count(); i++)
-                {
-                    if (it.value() == item.second[i])
-                    {
+    for (auto it = properties.constBegin(); it != properties.constEnd(); ++it) {
+        for (auto item : enums.toStdMap()) {
+            if (it.key() == item.first) {
+                for (int i = 0; i < item.second.count(); i++) {
+                    if (it.value() == item.second[i]) {
                         properties[it.key()] = i;
                         break;
                     }
@@ -1175,7 +1177,7 @@ Properties& MapReaderPrivate::convertEnumValuesToInt(Properties& properties,MapO
             }
         }
     }
-    
+
     return properties;
 }
 

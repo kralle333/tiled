@@ -55,9 +55,10 @@ QtGuiApplication {
         var defs = [
             "TILED_VERSION=" + version,
             "QT_DEPRECATED_WARNINGS",
-            "QT_DISABLE_DEPRECATED_BEFORE=0x050700",
+            "QT_DISABLE_DEPRECATED_BEFORE=0x050900",
             "QT_NO_CAST_FROM_ASCII",
             "QT_NO_CAST_TO_ASCII",
+            "QT_NO_FOREACH",
             "QT_NO_URL_CAST_FROM_STRING",
             "_USE_MATH_DEFINES"
         ];
@@ -231,6 +232,8 @@ QtGuiApplication {
         "flexiblescrollbar.h",
         "flipmapobjects.cpp",
         "flipmapobjects.h",
+		"generatecroppedrectangle.cpp",
+		"generatecroppedrectangle.h",
         "geometry.cpp",
         "geometry.h",
         "grouplayeritem.cpp",
@@ -288,6 +291,8 @@ QtGuiApplication {
         "minimap.h",
         "minimaprenderer.cpp",
         "minimaprenderer.h",
+        "modifyenumlist.cpp",
+        "modifyenumlist.h",
         "movelayer.cpp",
         "movelayer.h",
         "movemapobject.cpp",
@@ -538,6 +543,7 @@ QtGuiApplication {
         files: ["sparkleautoupdater.mm"]
     }
     Group {
+        condition: qbs.targetOS.contains("macos")
         name: "Public DSA Key File"
         files: ["../../dist/dsa_pub.pem"]
         qbs.install: true

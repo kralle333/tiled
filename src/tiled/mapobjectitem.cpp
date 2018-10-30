@@ -24,25 +24,16 @@
 
 #include "mapdocument.h"
 #include "mapobject.h"
-#include "mapobjectmodel.h"
 #include "maprenderer.h"
 #include "mapscene.h"
 #include "mapview.h"
 #include "objectgroup.h"
 #include "objectgroupitem.h"
 #include "preferences.h"
-#include "resizemapobject.h"
 #include "tile.h"
 #include "zoomable.h"
 
-#include <QApplication>
-#include <QGraphicsSceneMouseEvent>
 #include <QPainter>
-#include <QPalette>
-#include <QStyleOptionGraphicsItem>
-#include <QVector2D>
-
-#include <cmath>
 
 using namespace Tiled;
 using namespace Tiled::Internal;
@@ -53,6 +44,7 @@ MapObjectItem::MapObjectItem(MapObject *object, MapDocument *mapDocument,
     mObject(object),
     mMapDocument(mapDocument)
 {
+    setAcceptedMouseButtons(Qt::MouseButtons());
     syncWithMapObject();
 }
 
@@ -151,4 +143,32 @@ QColor MapObjectItem::objectColor(const MapObject *object)
 
     // Fallback color
     return Qt::gray;
+}
+
+bool MapObjectItem::isAlphaZeroAt(const QPointF& pos) const
+{
+    if (mObject->cell().tile() == nullptr ||
+        mObject->cell().tile()->imageSource().isEmpty())
+    {
+        return true;
+    }
+    //Only return object if object's alpha value is not 0 at the given position
+    QPixmap pixmap = mObject->cell().tile()->image();
+    float scaleX = pixmap.width() / mObject->width();
+    float scaleY = pixmap.height() / mObject->height();
+    QPointF imageLocalPosition = sceneTransform().inverted().map(pos);
+    int x = imageLocalPosition.x() * scaleX;
+    int y = (mObject->height() - -imageLocalPosition.y()) * scaleY;
+
+    QImage pixMapImage = pixmap.toImage();
+    if (mObject->cell().flippedHorizontally())
+    {
+        pixMapImage = pixMapImage.mirrored(true, false);
+    }
+    if (mObject->cell().flippedVertically())
+    {
+        pixMapImage = pixMapImage.mirrored(false, true);
+    }
+
+    return pixMapImage.pixel(x, y) >> 24 == 0;
 }

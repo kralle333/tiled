@@ -25,6 +25,7 @@
 #include "tilesetformat.h"
 
 #include <QList>
+#include <QMap>
 
 #include <memory>
 #include <unordered_map>
@@ -34,9 +35,12 @@ namespace Tiled {
 namespace Internal {
 
 class MapDocument;
+class TilesetDocument;
 class TilesetTerrainModel;
 class TilesetWangSetModel;
 class WangColorModel;
+
+using TilesetDocumentPtr = QSharedPointer<TilesetDocument>;
 
 /**
  * Represents an editable tileset.
@@ -49,6 +53,8 @@ public:
     TilesetDocument(const SharedTileset &tileset, const QString &fileName = QString());
     ~TilesetDocument() override;
 
+    TilesetDocumentPtr sharedFromThis() { return qSharedPointerCast<TilesetDocument>(Document::sharedFromThis()); }
+
     bool save(const QString &fileName, QString *error = nullptr) override;
 
     bool canReload() const;
@@ -58,9 +64,9 @@ public:
      * Loads a tileset and returns a TilesetDocument instance on success.
      * Returns null on error and sets the \a error message.
      */
-    static TilesetDocument *load(const QString &fileName,
-                                 TilesetFormat *format,
-                                 QString *error = nullptr);
+    static TilesetDocumentPtr load(const QString &fileName,
+                                   TilesetFormat *format,
+                                   QString *error = nullptr);
 
     FileFormat *writerFormat() const override;
     void setWriterFormat(TilesetFormat *format);
@@ -99,6 +105,8 @@ public:
     void setTileType(Tile *tile, const QString &type);
     void setTileImage(Tile *tile, const QPixmap &image, const QUrl &source);
 
+    static TilesetDocument* findDocumentForTileset(const SharedTileset &tileset);
+
 signals:
     /**
      * This signal is currently used when adding or removing tiles from a
@@ -114,6 +122,7 @@ signals:
 
     void tileTypeChanged(Tile *tile);
     void tileImageSourceChanged(Tile *tile);
+    void tileCroppedRectangleChanged(Tile *tile);
 
     /**
      * Notifies tileset models about changes to tile terrain information.
@@ -163,6 +172,8 @@ private:
 
     QList<Tile*> mSelectedTiles;
     QPointer<TilesetFormat> mExportFormat;
+
+    static QMap<SharedTileset, TilesetDocument*> sTilesetToDocument;
 };
 
 

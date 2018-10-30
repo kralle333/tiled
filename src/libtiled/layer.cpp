@@ -42,6 +42,7 @@ namespace Tiled {
 Layer::Layer(TypeFlag type, const QString &name, int x, int y) :
     Object(LayerType),
     mName(name),
+    mId(0),
     mLayerType(type),
     mX(x),
     mY(y),
@@ -170,6 +171,7 @@ QPointF Layer::totalOffset() const
  */
 Layer *Layer::initializeClone(Layer *clone) const
 {
+    // mId is not copied, will be assigned when layer is added to a map
     clone->mOffset = mOffset;
     clone->mOpacity = mOpacity;
     clone->mVisible = mVisible;
@@ -222,7 +224,7 @@ Layer *LayerIterator::next()
         // Traverse to parent layer if last child
         if (index == siblings.size()) {
             layer = layer->parentLayer();
-            index = layer ? layer->siblingIndex() : -1;
+            index = layer ? layer->siblingIndex() : mMap->layerCount();
         } else {
             layer = siblings.at(index);
 
@@ -344,6 +346,14 @@ Layer *LayerIterator::previous()
         mCurrentLayer = nullptr;
         mSiblingIndex = mMap ? mMap->layerCount() : -1;
     }
+
+bool LayerIterator::operator==(const LayerIterator &other) const
+{
+    return mMap == other.mMap &&
+            mCurrentLayer == other.mCurrentLayer &&
+            mSiblingIndex == other.mSiblingIndex &&
+            mLayerTypes == other.mLayerTypes;
+}
 
 
     /**

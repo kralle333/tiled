@@ -68,6 +68,7 @@
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMessageBox>
+#include "tileseteditor.h"
 
 namespace Tiled {
 namespace Internal {
@@ -93,8 +94,8 @@ PropertyBrowser::PropertyBrowser(QWidget *parent)
 
     retranslateUi();
 
-    connect(mVariantManager, SIGNAL(valueChanged(QtProperty*,QVariant)),
-            SLOT(valueChanged(QtProperty*,QVariant)));
+    connect(mVariantManager, &QtVariantPropertyManager::valueChanged,
+            this, &PropertyBrowser::valueChanged);
 
     connect(variantEditorFactory, &VariantEditorFactory::resetProperty,
             this, &PropertyBrowser::resetProperty);
@@ -165,6 +166,8 @@ void PropertyBrowser::setDocument(Document *document)
         connect(tilesetDocument, &TilesetDocument::tileProbabilityChanged,
                 this, &PropertyBrowser::tileChanged);
         connect(tilesetDocument, &TilesetDocument::tileImageSourceChanged,
+                this, &PropertyBrowser::tileChanged);
+        connect(tilesetDocument, &TilesetDocument::tileCroppedRectangleChanged,
                 this, &PropertyBrowser::tileChanged);
         connect(tilesetDocument, &TilesetDocument::tileTypeChanged,
                 this, &PropertyBrowser::tileTypeChanged);
@@ -438,11 +441,11 @@ void PropertyBrowser::propertyRemoved(Object *object, const QString &name)
     QVariant predefinedValue = predefinedPropertyValue(mObject, name);
 
     if (!predefinedValue.isValid() &&
-            !anyObjectHasProperty(mDocument->currentObjects(), name)) {
-        // It's not a predefined property and no selected object has this
-        // property, so delete it.
+        !anyObjectHasProperty(mDocument->currentObjects(), name)) {
+    // It's not a predefined property and no selected object has this
+    // property, so delete it.
 
-        // First move up or down the currently selected item
+    // First move up or down the currently selected item
         QtBrowserItem *item = currentItem();
         if (item && item->property() == property) {
             const QList<QtBrowserItem *> siblings = item->parent()->children();
@@ -554,10 +557,10 @@ void PropertyBrowser::addMapProperties()
     QtProperty *groupProperty = mGroupManager->addProperty(tr("Map"));
 
     QtVariantProperty *orientationProperty =
-            addProperty(OrientationProperty,
-                        QtVariantPropertyManager::enumTypeId(),
-                        tr("Orientation"),
-                        groupProperty);
+        addProperty(OrientationProperty,
+                    QtVariantPropertyManager::enumTypeId(),
+                    tr("Orientation"),
+                    groupProperty);
 
     orientationProperty->setAttribute(QLatin1String("enumNames"), mOrientationNames);
 
@@ -570,34 +573,34 @@ void PropertyBrowser::addMapProperties()
     addProperty(HexSideLengthProperty, QVariant::Int, tr("Tile Side Length (Hex)"), groupProperty);
 
     QtVariantProperty *staggerAxisProperty =
-            addProperty(StaggerAxisProperty,
-                        QtVariantPropertyManager::enumTypeId(),
-                        tr("Stagger Axis"),
-                        groupProperty);
+        addProperty(StaggerAxisProperty,
+                    QtVariantPropertyManager::enumTypeId(),
+                    tr("Stagger Axis"),
+                    groupProperty);
 
     staggerAxisProperty->setAttribute(QLatin1String("enumNames"), mStaggerAxisNames);
 
     QtVariantProperty *staggerIndexProperty =
-            addProperty(StaggerIndexProperty,
-                        QtVariantPropertyManager::enumTypeId(),
-                        tr("Stagger Index"),
-                        groupProperty);
+        addProperty(StaggerIndexProperty,
+                    QtVariantPropertyManager::enumTypeId(),
+                    tr("Stagger Index"),
+                    groupProperty);
 
     staggerIndexProperty->setAttribute(QLatin1String("enumNames"), mStaggerIndexNames);
 
     QtVariantProperty *layerFormatProperty =
-            addProperty(LayerFormatProperty,
-                        QtVariantPropertyManager::enumTypeId(),
-                        tr("Tile Layer Format"),
-                        groupProperty);
+        addProperty(LayerFormatProperty,
+                    QtVariantPropertyManager::enumTypeId(),
+                    tr("Tile Layer Format"),
+                    groupProperty);
 
     layerFormatProperty->setAttribute(QLatin1String("enumNames"), mLayerFormatNames);
 
     QtVariantProperty *renderOrderProperty =
-            addProperty(RenderOrderProperty,
-                        QtVariantPropertyManager::enumTypeId(),
-                        tr("Tile Render Order"),
-                        groupProperty);
+        addProperty(RenderOrderProperty,
+                    QtVariantPropertyManager::enumTypeId(),
+                    tr("Tile Render Order"),
+                    groupProperty);
 
     renderOrderProperty->setAttribute(QLatin1String("enumNames"), mRenderOrderNames);
 
@@ -640,7 +643,7 @@ void PropertyBrowser::addMapObjectProperties()
     addProperty(NameProperty, QVariant::String, tr("Name"), groupProperty);
 
     QtVariantProperty *typeProperty =
-            addProperty(TypeProperty, QVariant::String, tr("Type"), groupProperty);
+        addProperty(TypeProperty, QVariant::String, tr("Type"), groupProperty);
     typeProperty->setAttribute(QLatin1String("suggestions"), objectTypeNames());
 
     if (mMapDocument->allowHidingObjects())
@@ -662,8 +665,8 @@ void PropertyBrowser::addMapObjectProperties()
 
     if (mMapObjectFlags & ObjectHasTile) {
         QtVariantProperty *flippingProperty =
-                addProperty(FlippingProperty, VariantPropertyManager::flagTypeId(),
-                               tr("Flipping"), groupProperty);
+            addProperty(FlippingProperty, VariantPropertyManager::flagTypeId(),
+                        tr("Flipping"), groupProperty);
 
         flippingProperty->setAttribute(QLatin1String("flagNames"), mFlippingFlagNames);
     }
@@ -681,12 +684,13 @@ void PropertyBrowser::addMapObjectProperties()
 
 void PropertyBrowser::addLayerProperties(QtProperty *parent)
 {
+    addProperty(IdProperty, QVariant::Int, tr("ID"), parent)->setEnabled(false);
     addProperty(NameProperty, QVariant::String, tr("Name"), parent);
     addProperty(VisibleProperty, QVariant::Bool, tr("Visible"), parent);
     addProperty(LockedProperty, QVariant::Bool, tr("Locked"), parent);
 
     QtVariantProperty *opacityProperty =
-            addProperty(OpacityProperty, QVariant::Double, tr("Opacity"), parent);
+        addProperty(OpacityProperty, QVariant::Double, tr("Opacity"), parent);
     opacityProperty->setAttribute(QLatin1String("minimum"), 0.0);
     opacityProperty->setAttribute(QLatin1String("maximum"), 1.0);
     opacityProperty->setAttribute(QLatin1String("singleStep"), 0.1);
@@ -697,12 +701,11 @@ void PropertyBrowser::addLayerProperties(QtProperty *parent)
 
 const QStringList PropertyBrowser::getTilesetsOptions() const
 {
-    QVector<Tiled::SharedTileset> tilesets = mMapDocument->map()->tilesets();
+    QVector<SharedTileset> tilesets = mMapDocument->map()->tilesets();
     QStringList allowedTilesetNames;
     allowedTilesetNames.append(QLatin1String("All"));
-    foreach(Tiled::SharedTileset t, tilesets)
-    {
-        allowedTilesetNames << t->name();
+    for (auto itr = tilesets.begin(); itr != tilesets.end(); ++itr) {
+        allowedTilesetNames << (*itr)->name();
     }
     return allowedTilesetNames;
 }
@@ -723,9 +726,9 @@ void PropertyBrowser::addObjectGroupProperties()
 
     QtVariantProperty *drawOrderProperty =
         addProperty(DrawOrderProperty,
-            QtVariantPropertyManager::enumTypeId(),
-            tr("Drawing Order"),
-            groupProperty);
+                    QtVariantPropertyManager::enumTypeId(),
+                    tr("Drawing Order"),
+                    groupProperty);
 
     drawOrderProperty->setAttribute(QLatin1String("enumNames"), mDrawOrderNames);
 
@@ -781,10 +784,10 @@ void PropertyBrowser::addTilesetProperties()
     backgroundProperty->setEnabled(mTilesetDocument);
 
     QtVariantProperty *orientationProperty =
-            addProperty(OrientationProperty,
-                        QtVariantPropertyManager::enumTypeId(),
-                        tr("Orientation"),
-                        groupProperty);
+        addProperty(OrientationProperty,
+                    QtVariantPropertyManager::enumTypeId(),
+                    tr("Orientation"),
+                    groupProperty);
 
     orientationProperty->setAttribute(QLatin1String("enumNames"), mTilesetOrientationNames);
 
@@ -801,7 +804,7 @@ void PropertyBrowser::addTilesetProperties()
     // Next properties we should add only for non 'Collection of Images' tilesets
     if (!tileset->isCollection()) {
         QtVariantProperty *parametersProperty =
-                addProperty(TilesetImageParametersProperty, VariantPropertyManager::tilesetParametersTypeId(), tr("Image"), groupProperty);
+            addProperty(TilesetImageParametersProperty, VariantPropertyManager::tilesetParametersTypeId(), tr("Image"), groupProperty);
 
         parametersProperty->setEnabled(mTilesetDocument);
 
@@ -830,7 +833,7 @@ void PropertyBrowser::addTileProperties()
     addProperty(IdProperty, QVariant::Int, tr("ID"), groupProperty)->setEnabled(false);
 
     QtVariantProperty *typeProperty =
-            addProperty(TypeProperty, QVariant::String, tr("Type"), groupProperty);
+        addProperty(TypeProperty, QVariant::String, tr("Type"), groupProperty);
     typeProperty->setAttribute(QLatin1String("suggestions"), objectTypeNames());
     typeProperty->setEnabled(mTilesetDocument);
 
@@ -1138,7 +1141,7 @@ void PropertyBrowser::applyLayerValue(PropertyId id, const QVariant &val)
 void PropertyBrowser::applyTileLayerValue(PropertyId id, const QVariant &val)
 {
     Q_UNUSED(id)
-    Q_UNUSED(val)
+        Q_UNUSED(val)
 }
 
 void PropertyBrowser::applyObjectGroupValue(PropertyId id, const QVariant &val)
@@ -1203,7 +1206,7 @@ void PropertyBrowser::applyImageLayerValue(PropertyId id, const QVariant &val)
 void PropertyBrowser::applyGroupLayerValue(PropertyId id, const QVariant &val)
 {
     Q_UNUSED(id)
-    Q_UNUSED(val)
+        Q_UNUSED(val)
 }
 
 void PropertyBrowser::applyTilesetValue(PropertyId id, const QVariant &val)
@@ -1442,17 +1445,14 @@ QtVariantProperty *PropertyBrowser::createCustomProperty(const QString &name, co
     if (value == QtVariantPropertyManager::enumTypeId()) {
         type = QtVariantPropertyManager::enumTypeId();
     }
-    
+
 
     QtVariantProperty* property = createProperty(CustomProperty, type, name);
     property->setValue(value);
-    qDebug() << "creation";
-    qDebug() << property->propertyName() << "," << value;
-    if(type == QtVariantPropertyManager::enumTypeId())
-    {
-        property->setAttribute(QLatin1String("enumNames"), Properties::getEnumsWithName(mObject,name));
+    if (type == QtVariantPropertyManager::enumTypeId()) {
+        property->setAttribute(QLatin1String("enumNames"), Properties::getEnumsWithName(mObject, name));
     }
-   
+
     mCustomPropertiesGroup->insertSubProperty(property, precedingProperty);
 
     // Collapse custom color properties, to save space
@@ -1581,7 +1581,7 @@ void PropertyBrowser::updateProperties()
 
         const QString &type = mapObject->effectiveType();
         const auto typeColorGroup = mapObject->type().isEmpty() ? QPalette::Disabled
-                                                                : QPalette::Active;
+            : QPalette::Active;
 
         FilePath templateFilePath;
         if (auto objectTemplate = mapObject->objectTemplate())
@@ -1626,6 +1626,7 @@ void PropertyBrowser::updateProperties()
     case Object::LayerType: {
         const Layer *layer = static_cast<const Layer*>(mObject);
 
+        mIdToProperty[IdProperty]->setValue(layer->id());
         mIdToProperty[NameProperty]->setValue(layer->name());
         mIdToProperty[VisibleProperty]->setValue(layer->isVisible());
         mIdToProperty[LockedProperty]->setValue(layer->isLocked());
@@ -1645,7 +1646,7 @@ void PropertyBrowser::updateProperties()
         }
         case Layer::ImageLayerType: {
             const ImageLayer *imageLayer = static_cast<const ImageLayer*>(layer);
-            mIdToProperty[ImageSourceProperty]->setValue(QVariant::fromValue(FilePath { imageLayer->imageSource() }));
+            mIdToProperty[ImageSourceProperty]->setValue(QVariant::fromValue(FilePath{ imageLayer->imageSource() }));
             mIdToProperty[ColorProperty]->setValue(imageLayer->transparentColor());
             break;
         }
@@ -1658,7 +1659,7 @@ void PropertyBrowser::updateProperties()
         Tileset *tileset = static_cast<Tileset*>(mObject);
 
         if (QtVariantProperty *fileNameProperty = mIdToProperty.value(FileNameProperty))
-            fileNameProperty->setValue(QVariant::fromValue(FilePath { QUrl::fromLocalFile(tileset->fileName()) }));
+            fileNameProperty->setValue(QVariant::fromValue(FilePath{ QUrl::fromLocalFile(tileset->fileName()) }));
 
         mIdToProperty[BackgroundColorProperty]->setValue(tileset->backgroundColor());
 
@@ -1691,7 +1692,7 @@ void PropertyBrowser::updateProperties()
         mIdToProperty[CropProperty]->setValue(tile->croppedRectangle());
         mIdToProperty[TileProbabilityProperty]->setValue(tile->probability());
         if (QtVariantProperty *imageSourceProperty = mIdToProperty.value(ImageSourceProperty))
-            imageSourceProperty->setValue(QVariant::fromValue(FilePath { tile->imageSource() }));
+            imageSourceProperty->setValue(QVariant::fromValue(FilePath{ tile->imageSource() }));
         break;
     }
     case Object::TerrainType: {
@@ -1737,7 +1738,7 @@ void PropertyBrowser::updateCustomProperties()
         if (obj == mObject)
             continue;
 
-        QMapIterator<QString,QVariant> it(obj->properties());
+        QMapIterator<QString, QVariant> it(obj->properties());
 
         while (it.hasNext()) {
             it.next();
@@ -1758,7 +1759,7 @@ void PropertyBrowser::updateCustomProperties()
 
         // Inherit properties from the template
         if (const MapObject *templateObject = mapObject->templateObject()) {
-            QMapIterator<QString,QVariant> it(templateObject->properties());
+            QMapIterator<QString, QVariant> it(templateObject->properties());
             while (it.hasNext()) {
                 it.next();
                 if (!mCombinedProperties.contains(it.key()))
@@ -1771,7 +1772,7 @@ void PropertyBrowser::updateCustomProperties()
                 objectType = tile->type();
 
             // Inherit properties from the tile
-            QMapIterator<QString,QVariant> it(tile->properties());
+            QMapIterator<QString, QVariant> it(tile->properties());
             while (it.hasNext()) {
                 it.next();
                 if (!mCombinedProperties.contains(it.key()))
@@ -1794,7 +1795,7 @@ void PropertyBrowser::updateCustomProperties()
         // Inherit properties from the object type
         for (const ObjectType &type : Object::objectTypes()) {
             if (type.name == objectType) {
-                QMapIterator<QString,QVariant> it(type.defaultProperties);
+                QMapIterator<QString, QVariant> it(type.defaultProperties);
                 while (it.hasNext()) {
                     it.next();
                     if (!mCombinedProperties.contains(it.key()))
@@ -1804,7 +1805,7 @@ void PropertyBrowser::updateCustomProperties()
         }
     }
 
-    QMapIterator<QString,QVariant> it(mCombinedProperties);
+    QMapIterator<QString, QVariant> it(mCombinedProperties);
     qDebug() << "refresh";
     while (it.hasNext()) {
         it.next();
@@ -1816,7 +1817,7 @@ void PropertyBrowser::updateCustomProperties()
                                                   mCustomPropertiesGroup);
 
         qDebug() << property->propertyName() << "," << it.value();
-        if(!enums.isEmpty())
+        if (!enums.isEmpty())
             property->setAttribute(QLatin1String("enumNames"), enums);
         property->setValue(it.value());
 
