@@ -429,8 +429,12 @@ void OrthogonalRenderer::drawMapObject(QPainter *painter,
             painter->setPen(shadowPen);
             painter->drawRect(rect.translated(shadowOffset));
 
+            brushColor = Qt::gray;
+            brushColor.setAlpha(50);
+            const QBrush rectBrush(brushColor);
+
             painter->setPen(linePen);
-            painter->setBrush(fillBrush);
+            painter->setBrush(rectBrush);
             painter->drawRect(rect);
             break;
         }
@@ -469,8 +473,12 @@ void OrthogonalRenderer::drawMapObject(QPainter *painter,
             painter->setPen(thickShadowPen);
             painter->drawPoint(screenPolygon.first() + shadowOffset);
 
+            brushColor = Qt::gray;
+            brushColor.setAlpha(50);
+            const QBrush rectBrush(brushColor);
+
             painter->setPen(linePen);
-            painter->setBrush(fillBrush);
+            painter->setBrush(brushColor);
             painter->drawPolygon(screenPolygon);
             painter->setPen(thickLinePen);
             painter->drawPoint(screenPolygon.first());
