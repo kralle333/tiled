@@ -130,6 +130,19 @@ QColor MapObjectItem::objectColor(const MapObject *object)
 {
     const QString effectiveType = object->effectiveType();
 
+    if(object->shape() == MapObject::Rectangle || object->shape() == MapObject::Polygon)
+    {        
+        if (effectiveType == tr("trigger")) {
+            return QColor(0x8094FF);
+        }
+        if (effectiveType == tr("walkable")) {
+            return QColor(0x80FF8E);
+        }
+        if (effectiveType == tr("")) {
+            return QColor(0xFF8094);
+        }
+    }
+
     // See if this object type has a color associated with it
     for (const ObjectType &type : Object::objectTypes()) {
         if (type.name.compare(effectiveType, Qt::CaseInsensitive) == 0)
