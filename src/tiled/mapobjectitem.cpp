@@ -141,6 +141,9 @@ QColor MapObjectItem::objectColor(const MapObject *object)
         if (effectiveType == tr("")) {
             return QColor(0xFF8094);
         }
+        if (effectiveType == tr("respawnarea")) {
+            return QColor(0xCD80FF);
+        }
     }
 
     // See if this object type has a color associated with it
