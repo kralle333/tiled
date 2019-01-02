@@ -139,14 +139,14 @@ QColor MapObjectItem::objectColor(const MapObject *object)
             return QColor(0x80FF8E);
         }
         if (effectiveType == tr("")) {
-            return QColor(0xFF8094);
+            return QColor(0xFF9f9f);
         }
         if (effectiveType == tr("respawnarea")) {
             return QColor(0xCD80FF);
         }
 
         if (effectiveType == tr("encounter")) {
-            return QColor(0xFF5050);
+            return QColor(0xFF1010);
         }
     }
 
