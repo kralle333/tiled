@@ -125,12 +125,22 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     mActionToggleOtherLayers = new QAction(this);
     mActionToggleOtherLayers->setShortcut(tr("Ctrl+Shift+H"));
     mActionToggleOtherLayers->setIcon(
-            QIcon(QLatin1String(":/images/16x16/show_hide_others.png")));
+            QIcon(QLatin1String(":/images/16x16/visible_all.png")));
 
     mActionToggleLockOtherLayers = new QAction(this);
     mActionToggleLockOtherLayers->setShortcut(tr("Ctrl+Shift+L"));
     mActionToggleLockOtherLayers->setIcon(
+        QIcon(QLatin1String(":/images/16x16/locked_all.png")));
+
+    mActionLockLayer = new QAction(this);
+    mActionLockLayer->setShortcut(tr("Ctrl+L"));
+    mActionLockLayer->setIcon(
         QIcon(QLatin1String(":/images/16x16/locked.png")));
+
+    mActionToggleLayer = new QAction(this);
+    mActionToggleLayer->setShortcut(tr("Ctrl+H"));
+    mActionToggleLayer->setIcon(
+        QIcon(QLatin1String(":/images/16x16/visible.png")));
 
     mActionLayerProperties = new QAction(this);
     mActionLayerProperties->setIcon(
@@ -175,6 +185,10 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     connect(mActionMoveLayerDown, &QAction::triggered, this, &MapDocumentActionHandler::moveLayerDown);
     connect(mActionToggleOtherLayers, &QAction::triggered, this, &MapDocumentActionHandler::toggleOtherLayers);
     connect(mActionToggleLockOtherLayers, &QAction::triggered, this, &MapDocumentActionHandler::toggleLockOtherLayers);
+    connect(mActionToggleLayer, &QAction::triggered, this, &MapDocumentActionHandler::toggleLayer);
+    connect(mActionLockLayer, &QAction::triggered, this, &MapDocumentActionHandler::lockLayer);
+
+
     connect(mActionLayerProperties, &QAction::triggered, this, &MapDocumentActionHandler::layerProperties);
     connect(mActionTilesetsAllowed, &QAction::triggered, this, &MapDocumentActionHandler::tilesetsAllowed);
 
@@ -217,6 +231,8 @@ void MapDocumentActionHandler::retranslateUi()
     mActionMoveLayerDown->setText(tr("&Lower Layer"));
     mActionToggleOtherLayers->setText(tr("Show/&Hide all Other Layers"));
     mActionToggleLockOtherLayers->setText(tr("Lock/&Unlock all Other Layers"));
+    mActionToggleLayer->setText(tr("Show/Hide Layer"));
+    mActionLockLayer->setText(tr("Lock/Unlock Layer"));
     mActionTilesetsAllowed->setText(tr("Set Tilesets Allowed"));
     mActionLayerProperties->setText(tr("Layer &Properties..."));
 }
@@ -674,6 +690,26 @@ void MapDocumentActionHandler::toggleOtherLayers()
     if (mMapDocument)
         mMapDocument->toggleOtherLayers(mMapDocument->currentLayer());
 }
+
+void MapDocumentActionHandler::toggleLockOtherLayers()
+{
+    if (mMapDocument)
+        mMapDocument->toggleLockOtherLayers(mMapDocument->currentLayer());
+}
+
+void MapDocumentActionHandler::toggleLayer()
+{
+    if (mMapDocument)
+        mMapDocument->toggleLayer(mMapDocument->currentLayer());
+}
+
+void MapDocumentActionHandler::lockLayer()
+{
+    if (mMapDocument)
+        mMapDocument->lockLayer(mMapDocument->currentLayer());
+}
+
+
 void MapDocumentActionHandler::tilesetsAllowed()
 {
         
@@ -703,11 +739,7 @@ void MapDocumentActionHandler::tilesetsAllowed()
 
 }
 
-void MapDocumentActionHandler::toggleLockOtherLayers()
-{
-    if (mMapDocument)
-        mMapDocument->toggleLockOtherLayers(mMapDocument->currentLayer());
-}
+
 
 void MapDocumentActionHandler::layerProperties()
 {
@@ -813,6 +845,8 @@ void MapDocumentActionHandler::updateActions()
     mActionMoveLayerDown->setEnabled(canMoveLayerDown);
     mActionToggleOtherLayers->setEnabled(currentLayer && (hasNextLayer || hasPreviousLayer));
     mActionToggleLockOtherLayers->setEnabled(currentLayer && (hasNextLayer || hasPreviousLayer));
+    mActionToggleLayer->setEnabled(currentLayer);
+    mActionLockLayer->setEnabled(currentLayer);
     mActionRemoveLayer->setEnabled(currentLayer);
     mActionLayerProperties->setEnabled(currentLayer);
 

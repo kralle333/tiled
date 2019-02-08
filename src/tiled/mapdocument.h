@@ -158,6 +158,8 @@ public:
     void removeLayer(Layer *layer);
     void toggleOtherLayers(Layer *layer);
     void toggleLockOtherLayers(Layer *layer);
+    void toggleLayer(Layer *layer);
+    void lockLayer(Layer *layer);
 
     void insertTileset(int index, const SharedTileset &tileset);
     void removeTilesetAt(int index);

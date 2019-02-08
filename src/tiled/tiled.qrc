@@ -5,6 +5,7 @@
         <file>images/14x14/visible.png</file>
         <file>images/14x14/hidden.png</file>
         <file>images/16x16/visible.png</file>
+        <file>images/16x16/visible_all.png</file>
         <file>images/16x16/hidden.png</file>
         <file>images/24x24/visible.png</file>
         <file>images/24x24/hidden.png</file>
@@ -12,6 +13,7 @@
         <file>images/14x14/locked.png</file>
         <file>images/16x16/unlocked.png</file>
         <file>images/16x16/locked.png</file>
+        <file>images/16x16/locked_all.png</file>
         <file>images/24x24/unlocked.png</file>
         <file>images/24x24/locked.png</file>
         <file>images/16x16/add.png</file>

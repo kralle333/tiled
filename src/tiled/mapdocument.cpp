@@ -609,6 +609,24 @@ void MapDocument::toggleLockOtherLayers(Layer *layer)
     mLayerModel->toggleLockOtherLayers(layer);
 }
 
+/**
+* Toggle visibility of current layer
+*/
+void MapDocument::toggleLayer(Layer *layer)
+{
+    mLayerModel->setLayerVisible(layer, !layer->isVisible());
+}
+
+
+/**
+* Toggle lock of current layer
+*/
+void MapDocument::lockLayer(Layer *layer)
+{
+    mLayerModel->setLayerLocked(layer, layer->isUnlocked());
+}
+
+
 
 /**
  * Adds a tileset to this map at the given \a index. Emits the appropriate
