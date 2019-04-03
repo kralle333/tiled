@@ -121,6 +121,13 @@ private:
     QList<Layer *> &filteredChildLayers(GroupLayer *parentLayer) const;
 
     QIcon mObjectGroupIcon;
+    QIcon mRectangleIcon;
+    QIcon mImageIcon;
+    QIcon mPolygonIcon;
+    QIcon mPolylineIcon;
+    QIcon mEllipseIcon;
+    QIcon mTextIcon;
+    QIcon mPointIcon;
 };
 
 } // namespace Internal
