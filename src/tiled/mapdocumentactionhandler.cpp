@@ -47,6 +47,7 @@
 #include <QMessageBox>
 #include <QtCore/qmath.h>
 #include <QStyle>
+#include <QInputDialog>
 
 namespace Tiled {
 namespace Internal {
@@ -500,8 +501,42 @@ void MapDocumentActionHandler::focusOnCurrentObject()
     }
 }
 
+void MapDocumentActionHandler::findObjectWithId()
+{
+    bool ok;
+    int id = QInputDialog::getInt(nullptr,tr("Find Object"),tr("Id"),0,0,INT_MAX,1,&ok);
+    if (!ok) {
+        return;
+    }
 
-    void MapDocumentActionHandler::cropToSelection()
+    auto map = mMapDocument->map();
+    bool objectFound = false;
+    for (const Layer *layer :  map->layers()) {
+        if (layer->layerType() != Layer::ObjectGroupType)
+            continue;
+
+        const ObjectGroup *objectLayer = static_cast<const ObjectGroup*>(layer);
+        for (MapObject *object : objectLayer->objects()) {
+            if (id == object->id()) {
+                MapObject *mapObject = static_cast<MapObject*>(object);
+                const QPointF center = mapObject->bounds().center();
+                const QPointF offset = mapObject->objectGroup()->totalOffset();
+                DocumentManager::instance()->centerMapViewOn(center + offset);                
+                objectFound = true;
+                QList<MapObject*> selectedObjects;
+                selectedObjects.append(mapObject);
+                mMapDocument->setSelectedObjects(selectedObjects);
+                break;
+            }
+        }
+    }
+    if (!objectFound) {
+        QMessageBox::warning(nullptr, tr("Find Object Failed"), tr("Couldn't find object"));
+    }
+}
+
+
+void MapDocumentActionHandler::cropToSelection()
 {
     if (!mMapDocument)
         return;
