@@ -32,6 +32,7 @@
 #include "createtemplatetool.h"
 #include "createtextobjecttool.h"
 #include "createtileobjecttool.h"
+#include "createtriggerboxobjecttool.h"
 #include "documentmanager.h"
 #include "editpolygontool.h"
 #include "eraser.h"
@@ -188,6 +189,7 @@ MapEditor::MapEditor(QObject *parent)
     CreateObjectTool *ellipseObjectsTool = new CreateEllipseObjectTool(this);
     CreateObjectTool *polygonObjectsTool = new CreatePolygonObjectTool(this);
     CreateObjectTool *textObjectsTool = new CreateTextObjectTool(this);
+    CreateObjectTool *triggerBoxTool = new CreateTriggerBoxObjectTool(this);
 
     mToolsToolBar->addAction(mToolManager->registerTool(mStampBrush));
     mToolsToolBar->addAction(mToolManager->registerTool(mTerrainBrush));
@@ -203,11 +205,12 @@ MapEditor::MapEditor(QObject *parent)
     mToolsToolBar->addAction(mToolManager->registerTool(new ObjectSelectionTool(this)));
     mToolsToolBar->addAction(mToolManager->registerTool(mEditPolygonTool));
     mToolsToolBar->addAction(mToolManager->registerTool(rectangleObjectsTool));
+    mToolsToolBar->addAction(mToolManager->registerTool(textObjectsTool));
     mToolsToolBar->addAction(mToolManager->registerTool(pointObjectsTool));
     mToolsToolBar->addAction(mToolManager->registerTool(ellipseObjectsTool));
     mToolsToolBar->addAction(mToolManager->registerTool(polygonObjectsTool));
     mToolsToolBar->addAction(mToolManager->registerTool(templatesTool));
-    mToolsToolBar->addAction(mToolManager->registerTool(textObjectsTool));
+    mToolsToolBar->addAction(mToolManager->registerTool(triggerBoxTool));
     mToolsToolBar->addSeparator();
     mToolsToolBar->addAction(mToolManager->registerTool(new LayerOffsetTool(this)));
 

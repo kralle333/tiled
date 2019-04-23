@@ -47,14 +47,14 @@ public:
      */
     void setDocument(Document *document);
 
-public slots:
+    public slots:
     void bringToFront();
 
 protected:
     bool event(QEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
 
-private slots:
+    private slots:
     void currentObjectChanged(Object *object);
     void updateActions();
 
@@ -66,7 +66,8 @@ private slots:
     void removeProperties();
     void renameProperty();
     void renamePropertyTo(const QString &name);
-    void showContextMenu(const QPoint& pos);
+    void showContextMenu(const QPoint &pos);
+    void editTriggerProperties();
 
 private:
     void retranslateUi();
@@ -76,6 +77,7 @@ private:
     QAction *mActionAddProperty;
     QAction *mActionRemoveProperty;
     QAction *mActionRenameProperty;
+    QAction *mActionEditTriggerProperties;
 };
 
 } // namespace Internal

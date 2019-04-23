@@ -206,6 +206,8 @@ QtGuiApplication {
         "createtextobjecttool.h",
         "createtileobjecttool.cpp",
         "createtileobjecttool.h",
+		"createtriggerboxobjecttool.cpp",
+		"createtriggerboxobjecttool.h",
         "document.cpp",
         "document.h",
         "documentmanager.cpp",

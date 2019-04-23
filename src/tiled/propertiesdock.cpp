@@ -71,9 +71,16 @@ PropertiesDock::PropertiesDock(QWidget *parent)
     connect(mActionRenameProperty, &QAction::triggered,
             this, &PropertiesDock::renameProperty);
 
+    mActionEditTriggerProperties = new QAction(this);
+    mActionEditTriggerProperties->setEnabled(false);
+    mActionEditTriggerProperties->setIcon(QIcon(QLatin1String(":/images/16x16/edit-trigger-box.png")));
+    connect(mActionRenameProperty, &QAction::triggered,
+            this, &PropertiesDock::renameProperty);
+
     Utils::setThemeIcon(mActionAddProperty, "add");
     Utils::setThemeIcon(mActionRemoveProperty, "remove");
     Utils::setThemeIcon(mActionRenameProperty, "rename");
+    Utils::setThemeIcon(mActionEditTriggerProperties, "edit");
 
     QToolBar *toolBar = new QToolBar;
     toolBar->setFloatable(false);
@@ -82,6 +89,7 @@ PropertiesDock::PropertiesDock(QWidget *parent)
     toolBar->addAction(mActionAddProperty);
     toolBar->addAction(mActionRemoveProperty);
     toolBar->addAction(mActionRenameProperty);
+    toolBar->addAction(mActionEditTriggerProperties);
 
     QWidget *widget = new QWidget(this);
     QVBoxLayout *layout = new QVBoxLayout(widget);
@@ -156,6 +164,12 @@ void PropertiesDock::currentObjectChanged(Object *object)
 
     mPropertyBrowser->setEnabled(object);
     mActionAddProperty->setEnabled(enabled);
+    if (object->typeId() == Object::MapObjectType) {
+        auto mapObject = static_cast<MapObject*>(object);
+        if (mapObject->shape == MapObject::Shape::Rectangle && mapObject->type == tr("trigger")) {
+
+        }
+    }
 }
 
 void PropertiesDock::updateActions()
@@ -314,6 +328,11 @@ void PropertiesDock::renameProperty()
     dialog->setTextValue(oldName);
     dialog->setWindowTitle(tr("Rename Property"));
     dialog->open(this, SLOT(renamePropertyTo(QString)));
+}
+
+void PropertiesDock::editTriggerProperties()
+{
+
 }
 
 void PropertiesDock::renamePropertyTo(const QString &name)
