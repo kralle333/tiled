@@ -111,6 +111,7 @@ public slots:
     void copyPosition();
     void focusOnCurrentObject();
     void findObjectWithId();
+    void findObjectsWithTag();
 
     void cropToSelection();
     void autocrop();

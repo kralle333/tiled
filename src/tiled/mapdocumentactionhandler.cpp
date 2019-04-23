@@ -48,6 +48,7 @@
 #include <QtCore/qmath.h>
 #include <QStyle>
 #include <QInputDialog>
+#include <QtProperty>
 
 namespace Tiled {
 namespace Internal {
@@ -99,13 +100,13 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     mActionDuplicateLayer = new QAction(this);
     mActionDuplicateLayer->setShortcut(tr("Ctrl+Shift+D"));
     mActionDuplicateLayer->setIcon(
-            QIcon(QLatin1String(":/images/16x16/stock-duplicate-16.png")));
+        QIcon(QLatin1String(":/images/16x16/stock-duplicate-16.png")));
 
     mActionMergeLayerDown = new QAction(this);
 
     mActionRemoveLayer = new QAction(this);
     mActionRemoveLayer->setIcon(
-            QIcon(QLatin1String(":/images/16x16/edit-delete.png")));
+        QIcon(QLatin1String(":/images/16x16/edit-delete.png")));
 
     mActionSelectPreviousLayer = new QAction(this);
     mActionSelectPreviousLayer->setShortcut(tr("Ctrl+PgDown"));
@@ -116,17 +117,17 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     mActionMoveLayerUp = new QAction(this);
     mActionMoveLayerUp->setShortcut(tr("Ctrl+Shift+Up"));
     mActionMoveLayerUp->setIcon(
-            QIcon(QLatin1String(":/images/16x16/go-up.png")));
+        QIcon(QLatin1String(":/images/16x16/go-up.png")));
 
     mActionMoveLayerDown = new QAction(this);
     mActionMoveLayerDown->setShortcut(tr("Ctrl+Shift+Down"));
     mActionMoveLayerDown->setIcon(
-            QIcon(QLatin1String(":/images/16x16/go-down.png")));
+        QIcon(QLatin1String(":/images/16x16/go-down.png")));
 
     mActionToggleOtherLayers = new QAction(this);
     mActionToggleOtherLayers->setShortcut(tr("Ctrl+Shift+H"));
     mActionToggleOtherLayers->setIcon(
-            QIcon(QLatin1String(":/images/16x16/visible_all.png")));
+        QIcon(QLatin1String(":/images/16x16/visible_all.png")));
 
     mActionToggleLockOtherLayers = new QAction(this);
     mActionToggleLockOtherLayers->setShortcut(tr("Ctrl+Shift+L"));
@@ -145,7 +146,7 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
 
     mActionLayerProperties = new QAction(this);
     mActionLayerProperties->setIcon(
-            QIcon(QLatin1String(":images/16x16/document-properties.png")));
+        QIcon(QLatin1String(":images/16x16/document-properties.png")));
 
     mActionTilesetsAllowed = new QAction(this);
     mActionTilesetsAllowed->setIcon(
@@ -489,10 +490,8 @@ void MapDocumentActionHandler::copyPosition()
 
 void MapDocumentActionHandler::focusOnCurrentObject()
 {
-    if(Object *object = mMapDocument->currentObject())
-    {
-        if(object->typeId() == Object::MapObjectType)
-        {
+    if (Object *object = mMapDocument->currentObject()) {
+        if (object->typeId() == Object::MapObjectType) {
             MapObject *mapObject = static_cast<MapObject*>(object);
             const QPointF center = mapObject->bounds().center();
             const QPointF offset = mapObject->objectGroup()->totalOffset();
@@ -504,14 +503,14 @@ void MapDocumentActionHandler::focusOnCurrentObject()
 void MapDocumentActionHandler::findObjectWithId()
 {
     bool ok;
-    int id = QInputDialog::getInt(nullptr,tr("Find Object"),tr("Id"),0,0,INT_MAX,1,&ok);
+    int id = QInputDialog::getInt(nullptr, tr("Find Object"), tr("Id"), 0, 0, INT_MAX, 1, &ok);
     if (!ok) {
         return;
     }
 
     auto map = mMapDocument->map();
     bool objectFound = false;
-    for (const Layer *layer :  map->layers()) {
+    for (const Layer *layer : map->layers()) {
         if (layer->layerType() != Layer::ObjectGroupType)
             continue;
 
@@ -521,7 +520,7 @@ void MapDocumentActionHandler::findObjectWithId()
                 MapObject *mapObject = static_cast<MapObject*>(object);
                 const QPointF center = mapObject->bounds().center();
                 const QPointF offset = mapObject->objectGroup()->totalOffset();
-                DocumentManager::instance()->centerMapViewOn(center + offset);                
+                DocumentManager::instance()->centerMapViewOn(center + offset);
                 objectFound = true;
                 QList<MapObject*> selectedObjects;
                 selectedObjects.append(mapObject);
@@ -532,6 +531,46 @@ void MapDocumentActionHandler::findObjectWithId()
     }
     if (!objectFound) {
         QMessageBox::warning(nullptr, tr("Find Object Failed"), tr("Couldn't find object"));
+    }
+}
+
+void MapDocumentActionHandler::findObjectsWithTag()
+{
+    bool ok;
+    auto tag = QInputDialog::getText(nullptr, tr("Find Object"), tr("Tag"), QLineEdit::EchoMode::Normal, tr(""), &ok);
+    if (!ok) {
+        return;
+    }
+
+    auto map = mMapDocument->map();
+    bool objectFound = false;
+    QList<MapObject*> selectedObjects;
+    for (const Layer *layer : map->layers()) {
+        if (layer->layerType() != Layer::ObjectGroupType)
+            continue;
+
+        const ObjectGroup *objectLayer = static_cast<const ObjectGroup*>(layer);
+        for (MapObject *mapObject : objectLayer->objects()) {
+            if (mapObject->hasProperty(tr("Tags"))) {
+                QString tags = mapObject->propertyAsString(tr("Tags"));
+                auto tagsList = tags.split(tr(","), QString::SkipEmptyParts);
+                for (int i = 0; i < tagsList.length(); i++) {
+                    if (tagsList[i] == tag) {
+                        selectedObjects.append(mapObject);
+                        objectFound = true;
+                    }
+                }
+            }
+        }
+    }
+    if (!objectFound) {
+        QMessageBox::warning(nullptr, tr("Find Object Failed"), tr("Couldn't find objects"));
+    } else {
+        auto mapObject = selectedObjects.first();
+        const QPointF center = mapObject->bounds().center();
+        const QPointF offset = mapObject->objectGroup()->totalOffset();
+        DocumentManager::instance()->centerMapViewOn(center + offset);
+        mMapDocument->setSelectedObjects(selectedObjects);
     }
 }
 
@@ -568,8 +607,8 @@ void MapDocumentActionHandler::addObjectGroup()
 
 void MapDocumentActionHandler::addImageLayer()
 {
-     if (mMapDocument)
-         mMapDocument->addLayer(Layer::ImageLayerType);
+    if (mMapDocument)
+        mMapDocument->addLayer(Layer::ImageLayerType);
 }
 
 void MapDocumentActionHandler::addGroupLayer()
@@ -747,22 +786,20 @@ void MapDocumentActionHandler::lockLayer()
 
 void MapDocumentActionHandler::tilesetsAllowed()
 {
-        
+
     QScopedPointer<SetAllowedTilesetsDialog> dialog(new SetAllowedTilesetsDialog);
 
     dialog->populateTilesetLists(mMapDocument->map()->tilesets(), mMapDocument->currentLayer()->getAllowedTilesets());
 
     int result = dialog->exec();
-    if (result == QMessageBox::Accepted && dialog->wasListChanged())
-    {
+    if (result == QMessageBox::Accepted && dialog->wasListChanged()) {
         QVector<SharedTileset> newAllowedTilesets;
         for each (QString tilesetName in dialog->getAllowedTilesets())
         {
             for each (SharedTileset tileset in mMapDocument->map()->tilesets())
             {
                 //TODO: Multiple tilesets might have the same name, do a check with absolute path instead or address.
-                if (tilesetName == tileset->name())
-                {
+                if (tilesetName == tileset->name()) {
                     newAllowedTilesets.append(tileset);
                     break;
                 }
@@ -842,7 +879,7 @@ void MapDocumentActionHandler::updateActions()
         if (currentLayer->asTileLayer()) {
             mActionSelectNone->setEnabled(!selection.isEmpty());
         } else if (currentLayer->asObjectGroup()) {
-            mActionSelectNone->setEnabled(selectedObjectsCount  > 0);
+            mActionSelectNone->setEnabled(selectedObjectsCount > 0);
         } else {
             mActionSelectNone->setEnabled(false);
         }
@@ -860,7 +897,7 @@ void MapDocumentActionHandler::updateActions()
     mActionAddImageLayer->setEnabled(map);
 
     bool usableSelection = currentLayer && ((currentLayer->isObjectGroup() && selectedObjectsCount > 0) ||
-                                            (currentLayer->isTileLayer() && !selection.isEmpty()));
+        (currentLayer->isTileLayer() && !selection.isEmpty()));
     mActionLayerViaCopy->setEnabled(usableSelection);
     mActionLayerViaCut->setEnabled(usableSelection);
 
