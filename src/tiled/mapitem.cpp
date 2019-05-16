@@ -40,6 +40,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QPen>
 #include <QWidget>
+#include <QDebug>
 
 #include "qtcompat_p.h"
 
@@ -167,7 +168,7 @@ void MapItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     if (mDisplayMode == ReadOnly && event->button() == Qt::LeftButton && isUnderMouse()) {
         MapView *view = static_cast<MapView*>(event->widget()->parent());
-        QRectF viewRect { view->viewport()->rect() };
+        QRectF viewRect{ view->viewport()->rect() };
         QRectF sceneViewRect = view->viewportTransform().inverted().mapRect(viewRect);
         DocumentManager::instance()->switchToDocument(mMapDocument.data(),
                                                       sceneViewRect.center() - pos(),
@@ -340,15 +341,41 @@ void MapItem::imageLayerChanged(ImageLayer *imageLayer)
  * changed their size or offset or image.
  */
 void MapItem::adaptToTilesetTileSizeChanges(Tileset *tileset)
-{
+{ 
+
     for (QGraphicsItem *item : mLayerItems)
         if (TileLayerItem *tli = dynamic_cast<TileLayerItem*>(item))
             tli->syncWithTileLayer();
 
     for (MapObjectItem *item : mObjectItems) {
         const Cell &cell = item->mapObject()->cell();
-        if (cell.tileset() == tileset)
+        if (cell.tileset() == tileset) {
             item->syncWithMapObject();
+
+            auto enums = tileset->enums();
+            if (enums.count() > 0) {                
+                //Compare property keys with keys in the enums list.
+                //If a match is found, convert the enum string value to the correct index
+                auto properties = item->mapObject()->properties();
+                auto start = properties.constBegin();
+                auto end = properties.constEnd();
+                for (auto it = start; it != end; ++it) {
+                    for (auto enumItem : enums.toStdMap()) {
+                        if (it.key() == enumItem.first) {
+                            for (int i = 0; i < enumItem.second.count(); i++) {
+                                if (it.value() == enumItem.second[i]) {
+                                    qDebug() << it.value();
+                                    item->mapObject()->setProperty(it.key(), i);
+                                    break;
+                                }
+                            } 
+                            break; // Go to next property key
+                        }
+                    }                   
+
+                }
+            }
+        }
     }
 }
 
@@ -368,7 +395,7 @@ void MapItem::adaptToTileSizeChanges(Tile *tile)
 void MapItem::tilesetReplaced(int index, Tileset *tileset)
 {
     Q_UNUSED(index)
-    adaptToTilesetTileSizeChanges(tileset);
+        adaptToTilesetTileSizeChanges(tileset);
 }
 
 /**
@@ -436,7 +463,7 @@ void MapItem::objectsChanged(const QList<MapObject*> &objects)
  * Updates the Z value of the objects when appropriate.
  */
 void MapItem::objectsIndexChanged(ObjectGroup *objectGroup,
-                                   int first, int last)
+                                  int first, int last)
 {
     if (objectGroup->drawOrder() != ObjectGroup::IndexOrder)
         return;
