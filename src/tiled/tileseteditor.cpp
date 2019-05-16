@@ -672,6 +672,10 @@ void TilesetEditor::editEnumerations()
     if(result == QDialog::Accepted && dialog->wereEnumsChanged())
     {
         Tileset *tileSet = currentTileset();
+
+        //Fix indicies of tileset objects enums
+
+
         mCurrentTilesetDocument->undoStack()->push(new ModifyEnumList(tileSet, dialog->getEnums(), tileSet->enums()));
     }
 }

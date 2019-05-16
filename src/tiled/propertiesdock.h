@@ -67,7 +67,6 @@ protected:
     void renameProperty();
     void renamePropertyTo(const QString &name);
     void showContextMenu(const QPoint &pos);
-    void editTriggerProperties();
 
 private:
     void retranslateUi();

@@ -45,9 +45,12 @@ private slots:
     void addEnumButtonClicked();
     void removeEnumValueButtonClicked();
     void addEnumValueButtonClicked();
+    void moveEnumValueUp();
+    void moveEnumValueDown();
     void currentItemChanged(QListWidgetItem* previous, QListWidgetItem* current);
     void toggleAddRemoveButtons();
 private:
+    void moveEnumValue(bool movedUp);
     QString selectedItemText();
     QListWidgetItem* selectedItem();
     bool mEnumsWereChanged;

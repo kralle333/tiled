@@ -35,13 +35,19 @@ EnumsEditorDialog::EnumsEditorDialog(QWidget* parent) :
     connect(mUi->removeEnumButton, SIGNAL(clicked()), SLOT(removeEnumButtonClicked()));
     connect(mUi->addEnumValueButton, SIGNAL(clicked()), SLOT(addEnumValueButtonClicked()));
     connect(mUi->removeEnumValueButton, SIGNAL(clicked()), SLOT(removeEnumValueButtonClicked()));
+    connect(mUi->moveEnumValueUpButton, SIGNAL(clicked()), SLOT(moveEnumValueUp()));
+    connect(mUi->moveEnumValueDownButton, SIGNAL(clicked()), SLOT(moveEnumValueDown()));
+
     connect(mUi->enumsList, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
             SLOT(currentItemChanged(QListWidgetItem*,QListWidgetItem*)));
-    connect(mUi->enumValuesList, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)), SLOT(toggleAddRemoveButtons()));
+    connect(mUi->enumValuesList, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
+            SLOT(toggleAddRemoveButtons()));
 
     mUi->removeEnumButton->setDisabled(true);
     mUi->addEnumValueButton->setDisabled(true);
     mUi->removeEnumValueButton->setDisabled(true);
+    mUi->moveEnumValueUpButton->setDisabled(true);
+    mUi->moveEnumValueDownButton->setDisabled(true);
 }
 
 EnumsEditorDialog::~EnumsEditorDialog()
@@ -124,6 +130,50 @@ void EnumsEditorDialog::addEnumValueButtonClicked()
             mUi->removeEnumValueButton->setDisabled(false);
         }
     }
+} 
+
+void EnumsEditorDialog::moveEnumValueUp()
+{
+    moveEnumValue(true);
+}
+void EnumsEditorDialog::moveEnumValueDown()
+{
+    moveEnumValue(false);
+}
+
+void EnumsEditorDialog::moveEnumValue(bool movedUp)
+{
+    QListWidgetItem* currentItem = mUi->enumValuesList->currentItem();
+    if (currentItem != nullptr)
+    {
+        const QString selectedEnum = selectedItemText();
+        const int indexOfEnumValue = mEnums[selectedEnum].indexOf(currentItem->text());
+        if (movedUp)
+        {
+            if (indexOfEnumValue > 0)
+            {
+                mEnums[selectedItemText()].move(indexOfEnumValue, indexOfEnumValue - 1);
+                int currentIndex = mUi->enumValuesList->currentRow();
+                QListWidgetItem *currentItem = mUi->enumValuesList->takeItem(currentIndex);
+                mUi->enumValuesList->insertItem(currentIndex - 1, currentItem);
+                mUi->enumValuesList->setCurrentRow(currentIndex - 1);
+                mEnumsWereChanged = true;
+
+            }
+        }
+        else
+        {
+            if (indexOfEnumValue < mEnums[selectedEnum].length()-1)
+            {
+                mEnums[selectedItemText()].move(indexOfEnumValue, indexOfEnumValue + 1);
+                int currentIndex = mUi->enumValuesList->currentRow();
+                QListWidgetItem *currentItem = mUi->enumValuesList->takeItem(currentIndex);
+                mUi->enumValuesList->insertItem(currentIndex + 1, currentItem);
+                mUi->enumValuesList->setCurrentRow(currentIndex + 1);
+                mEnumsWereChanged = true;
+            }
+        }
+    }
 }
 
 void EnumsEditorDialog::currentItemChanged(QListWidgetItem* current, QListWidgetItem* previous)
@@ -170,12 +220,12 @@ void EnumsEditorDialog::setEnums(QMap<QString, QStringList> enums)
         if (mUi->enumsList->currentItem() == nullptr)
         {
             mUi->enumsList->setCurrentItem(mUi->enumsList->item(0));
-            if(!enumPairs.second.isEmpty())
+            if (!enumPairs.second.isEmpty())
             {
                 mUi->enumValuesList->setCurrentItem(mUi->enumValuesList->item(0));
             }
         }
-    }    
+    }
     toggleAddRemoveButtons();
     mEnumsWereChanged = false;
 }
@@ -185,4 +235,6 @@ void EnumsEditorDialog::toggleAddRemoveButtons()
     mUi->removeEnumValueButton->setDisabled(mUi->enumValuesList->currentItem() == nullptr);
     mUi->addEnumValueButton->setDisabled(mUi->enumsList->currentItem() == nullptr);
     mUi->removeEnumButton->setDisabled(mUi->enumsList->currentItem() == nullptr);
+    mUi->moveEnumValueUpButton->setDisabled(mUi->enumValuesList->currentItem() == nullptr);
+    mUi->moveEnumValueDownButton->setDisabled(mUi->enumValuesList->currentItem() == nullptr);
 }
