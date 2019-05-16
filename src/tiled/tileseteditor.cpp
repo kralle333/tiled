@@ -675,8 +675,11 @@ void TilesetEditor::editEnumerations()
 
         //Fix indicies of tileset objects enums
 
+        const QMap<QString, QStringList> oldEnums = tileSet->enums();
+        const QMap<QString, QStringList> newEnums = dialog->getEnums();
 
-        mCurrentTilesetDocument->undoStack()->push(new ModifyEnumList(tileSet, dialog->getEnums(), tileSet->enums()));
+
+        mCurrentTilesetDocument->undoStack()->push(new ModifyEnumList(tileSet, newEnums, oldEnums));
     }
 }
 

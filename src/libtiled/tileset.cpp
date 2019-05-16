@@ -698,12 +698,12 @@ void Tileset::addEnum(QString enumName, QStringList enumValues)
     }
 }
 
-void Tileset::setEnums(QMap<QString, QStringList> enums)
+void Tileset::setEnums(QMap<QString, QStringList> newEnums)
 {
     //Remove properties that will be removed
     for (auto tileElement : mTiles) {
         for (auto enumElement : mEnums.keys()) {
-            if (!enums.contains(enumElement) &&
+            if (!newEnums.contains(enumElement) &&
                 tileElement->hasProperty(enumElement)) {
                 tileElement->removeProperty(enumElement);
             }
@@ -711,20 +711,23 @@ void Tileset::setEnums(QMap<QString, QStringList> enums)
     }
 
 
-    mEnums.clear();
-    mEnums = enums;
-
     //Clear previously set values for matching property keys
-    for (auto tileElement : mTiles)
-    {
-        for (auto enumElement : mEnums.keys())
-        {
-            if(tileElement->hasProperty(enumElement))
-            {
-                tileElement->setProperty(enumElement, 0);
+    for (auto tileElement : mTiles) {
+        for (auto enumElement : newEnums.keys()) {
+            if (tileElement->hasProperty(enumElement)) {
+                int oldIndex = tileElement->property(enumElement).toInt();
+                auto stringValue = mEnums[enumElement][oldIndex];
+                int newIndex = newEnums[enumElement].indexOf(stringValue, 0);
+
+                if (oldIndex != newIndex) {
+                    tileElement->setProperty(enumElement, newIndex);
+                }
             }
         }
     }
+
+    mEnums.clear();
+    mEnums = newEnums;
 }
 
 /**
