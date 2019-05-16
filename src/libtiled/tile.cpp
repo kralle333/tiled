@@ -30,6 +30,7 @@
 
 #include "objectgroup.h"
 #include "tileset.h"
+#include "imagecache.h"
 
 using namespace Tiled;
 
@@ -63,6 +64,11 @@ Tile::Tile(const QPixmap &image, int id, Tileset *tileset):
 
 Tile::~Tile()
 {
+    if(mImageSource.isValid())
+    {
+        // We'll just assume that the tile came from here
+        ImageCache::remove(mImageSource.toLocalFile());
+    }
     delete mObjectGroup;
 }
 

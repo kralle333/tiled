@@ -571,6 +571,14 @@ MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
     connect(focusOnCurrentObjectShortcut, SIGNAL(activated()),
             mActionHandler, SLOT(focusOnCurrentObject()));
 
+    QShortcut *findObjectWithId = new QShortcut(tr("Shift+F"), this);
+    connect(findObjectWithId, SIGNAL(activated()),
+            mActionHandler, SLOT(findObjectWithId()));
+
+    QShortcut *findObjectsWithTag = new QShortcut(tr("Shift+T"), this);
+    connect(findObjectsWithTag, SIGNAL(activated()),
+            mActionHandler, SLOT(findObjectsWithTag()));
+
     updateActions();
     updateZoomActions();
     readSettings();
