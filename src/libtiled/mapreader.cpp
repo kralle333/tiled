@@ -431,6 +431,10 @@ SharedTileset MapReaderPrivate::readTileset()
     if (tileset && !mReadingExternalTileset)
         mGidMapper.insert(firstGid, tileset);
 
+
+	// Patch up enum properties on every tile
+	tileset->patchEnums();
+
     return tileset;
 }
 

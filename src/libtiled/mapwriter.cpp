@@ -834,7 +834,9 @@ void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
 
     if(mapObject.cell().tileset())
     {        
-        //Convert enum properties from int to strings
+		mapObjectProperties.merge(mapObject.cell().tileset()->properties);
+		
+		//Convert enum properties from int to strings
         auto enums = mapObject.cell().tileset()->enums();
 
         if(enums.count()>0)

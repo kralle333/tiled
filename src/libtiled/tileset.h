@@ -218,6 +218,8 @@ public:
 
     void swap(Tileset &other);
 
+	void patchEnums();
+
     SharedTileset clone() const;
 
     /**

@@ -713,18 +713,6 @@ void Tileset::setEnums(QMap<QString, QStringList> enums)
 
     mEnums.clear();
     mEnums = enums;
-
-    //Clear previously set values for matching property keys
-    for (auto tileElement : mTiles)
-    {
-        for (auto enumElement : mEnums.keys())
-        {
-            if(tileElement->hasProperty(enumElement))
-            {
-                tileElement->setProperty(enumElement, 0);
-            }
-        }
-    }
 }
 
 /**
@@ -949,6 +937,41 @@ Tileset::Orientation Tileset::orientationFromString(const QString& string)
     if (string == QLatin1String("isometric"))
         orientation = Isometric;
     return orientation;
+}
+
+void Tileset::patchEnums()
+{
+	auto tilesBegin = mTiles.begin();
+	auto tilesEnd = mTiles.end();
+	// For every tile
+	for (auto it_tile = tilesBegin; it_tile != tilesEnd; ++it_tile)
+	{
+		auto tile = (*it_tile);
+		auto enumBegin = mEnums.keyBegin();
+		auto endEnd = mEnums.keyEnd();
+		// Check every enum
+		for (auto it_enum = enumBegin; it_enum != endEnd; ++it_enum)
+		{
+			auto enumName = *it_enum;
+			auto enumValues = mEnums[enumName];
+			// If the tile has a property of this enum
+			if (tile->hasProperty(enumName))
+			{
+				auto currentValue = tile->property(enumName);
+				// Find the index
+				for (int eli = 0; eli < enumValues.size(); eli += 1)
+				{
+					if (enumValues.at(eli) == currentValue)
+					{
+						// And replace the property
+						tile->removeProperty(enumName);
+						tile->setProperty(enumName, eli);
+						break;
+					}
+				}
+			}
+		}
+	}
 }
 
 } // namespace Tiled
