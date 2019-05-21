@@ -828,21 +828,21 @@ void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
     if (shouldWrite(!mapObject.isVisible(), isTemplateInstance, mapObject.propertyChanged(MapObject::VisibleProperty)))
         w.writeAttribute(QLatin1String("visible"), QLatin1String(mapObject.isVisible() ? "1" : "0"));
 
-    //Copy properties so we can edit them
-    Properties mapObjectProperties;
-    mapObjectProperties.merge(mapObject.properties());
 
     if(mapObject.cell().tileset())
-    {        
-		mapObjectProperties.merge(mapObject.cell().tileset()->properties);
-		
+    {
+		//Copy properties so we can edit them
+		Properties mapObjectProperties;
+		mapObjectProperties.merge(mapObject.cell().tile()->properties()); // First copy the over the properties defined in the tileset
+		mapObjectProperties.merge(mapObject.properties()); // Then overlay that with the properties that were changed on the map object
+
 		//Convert enum properties from int to strings
         auto enums = mapObject.cell().tileset()->enums();
 
         if(enums.count()>0)
         {
-            Properties::const_iterator it = mapObject.properties().constBegin();
-            Properties::const_iterator it_end = mapObject.properties().constEnd();
+            Properties::iterator it = mapObjectProperties.begin();
+            Properties::iterator it_end = mapObjectProperties.end();
             for (; it != it_end; ++it) {
                 if(enums.contains(it.key()))
                 {
@@ -856,8 +856,14 @@ void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
                 }
             }
         }
-    }
-    writeProperties(w, mapObjectProperties);
+
+		writeProperties(w, mapObjectProperties);
+	}
+	else
+	{
+		writeProperties(w, mapObject.properties());
+	}
+
 
     switch (mapObject.shape()) {
     case MapObject::Rectangle:
