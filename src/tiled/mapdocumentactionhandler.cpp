@@ -554,8 +554,8 @@ void MapDocumentActionHandler::findObjectsWithTag()
             if (mapObject->hasProperty(tr("Tags"))) {
                 QString tags = mapObject->propertyAsString(tr("Tags"));
                 auto tagsList = tags.split(tr(","), QString::SkipEmptyParts);
-                for (int i = 0; i < tagsList.length(); i++) {
-                    if (tagsList[i] == tag) {
+                for (int i = 0; i < tagsList.length(); i++) {                    
+                    if (tagsList[i].trimmed() == tag.trimmed()) {
                         selectedObjects.append(mapObject);
                         objectFound = true;
                     }
