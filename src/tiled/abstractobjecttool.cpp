@@ -219,7 +219,7 @@ QList<MapObject*> AbstractObjectTool::mapObjectsAt(const QPointF &pos,bool ignor
 
         if (objectItem && objectItem->mapObject()->objectGroup()->isUnlocked())
         {
-            if (!ignoreAlpha && objectItem->isAlphaZeroAt(pos))
+            if (objectItem->mapObject()->type().isEmpty() && !ignoreAlpha && objectItem->isAlphaZeroAt(pos))
                 continue;
             objectList.append(objectItem->mapObject());
         }
