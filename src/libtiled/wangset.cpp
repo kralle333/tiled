@@ -487,7 +487,7 @@ QList<Tile *> WangSet::tilesChangedOnSetEdgeColors(int newEdgeColors) const
     for (auto i = mTileInfoToWangId.cbegin(); i != mTileInfoToWangId.cend(); ++i) {
         if (!wangIdIsValid(i.value(), newEdgeColors, cornerColorCount())) {
             int tileId = i.key() & 0x1fffffff;
-            tiles.append(mTileset->tileAt(tileId));
+            tiles.append(mTileset->findTile(tileId));
         }
     }
 
@@ -501,7 +501,7 @@ QList<Tile *> WangSet::tilesChangedOnSetCornerColors(int newCornerColors) const
     for (auto i = mTileInfoToWangId.cbegin(); i != mTileInfoToWangId.cend(); ++i) {
         if (!wangIdIsValid(i.value(), edgeColorCount(), newCornerColors)) {
             int tileId = i.key() & 0x1fffffff;
-            tiles.append(mTileset->tileAt(tileId));
+            tiles.append(mTileset->findTile(tileId));
         }
     }
 
@@ -517,17 +517,17 @@ QList<Tile *> WangSet::tilesChangedOnRemoveColor(int color, bool isEdge) const
             int c = isEdge? i.value().edgeColor(j) : i.value().cornerColor(j);
             int tileId = i.key() & 0x1fffffff;
             if (c >= color) {
-                tiles.append(mTileset->tileAt(tileId));
+                tiles.append(mTileset->findTile(tileId));
                 break;
             }
             if (isEdge) {
                 if (edgeColorCount() == 2 && c) {
-                    tiles.append(mTileset->tileAt(tileId));
+                    tiles.append(mTileset->findTile(tileId));
                     break;
                 }
             } else {
                 if (cornerColorCount() == 2 && c) {
-                    tiles.append(mTileset->tileAt(tileId));
+                    tiles.append(mTileset->findTile(tileId));
                     break;
                 }
             }
@@ -593,7 +593,7 @@ void WangSet::removeWangTile(const WangTile &wangTile)
 QList<WangTile> WangSet::sortedWangTiles() const
 {
     QList<WangTile> wangTiles = mWangIdToWangTile.values();
-    qStableSort(wangTiles.begin(), wangTiles.end());
+    std::stable_sort(wangTiles.begin(), wangTiles.end());
     return wangTiles;
 }
 
@@ -784,18 +784,37 @@ WangId WangSet::templateWangIdAt(unsigned n) const
 
 WangSet *WangSet::clone(Tileset *tileset) const
 {
-    WangSet *c = new WangSet(*this);
-
     // Caller is responsible for adding the WangSet to this tileset
-    c->setTileset(tileset);
+    WangSet *c = new WangSet(tileset, mName, mImageTileId);
+
+    c->mUniqueFullWangIdCount = mUniqueFullWangIdCount;
+    c->mEdgeColors = mEdgeColors;
+    c->mCornerColors = mCornerColors;
+    c->mWangIdToWangTile = mWangIdToWangTile;
+    c->mTileInfoToWangId = mTileInfoToWangId;
+    c->setProperties(properties());
 
     // Avoid sharing Wang colors
     for (QSharedPointer<WangColor> &wangColor : c->mEdgeColors) {
-        wangColor = QSharedPointer<WangColor>::create(*wangColor);
+        const auto properties = wangColor->properties();
+        wangColor = QSharedPointer<WangColor>::create(wangColor->colorIndex(),
+                                                      wangColor->isEdge(),
+                                                      wangColor->name(),
+                                                      wangColor->color(),
+                                                      wangColor->imageId(),
+                                                      wangColor->probability());
+        wangColor->setProperties(properties);
         wangColor->mWangSet = c;
     }
     for (QSharedPointer<WangColor> &wangColor : c->mCornerColors) {
-        wangColor = QSharedPointer<WangColor>::create(*wangColor);
+        const auto properties = wangColor->properties();
+        wangColor = QSharedPointer<WangColor>::create(wangColor->colorIndex(),
+                                                      wangColor->isEdge(),
+                                                      wangColor->name(),
+                                                      wangColor->color(),
+                                                      wangColor->imageId(),
+                                                      wangColor->probability());
+        wangColor->setProperties(properties);
         wangColor->mWangSet = c;
     }
 

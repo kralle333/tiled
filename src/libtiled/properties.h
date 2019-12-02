@@ -31,10 +31,8 @@
 #include "tiled_global.h"
 
 #include <QJsonArray>
-#include <QMap>
-#include <QString>
 #include <QUrl>
-#include <QVariant>
+#include <QVariantMap>
 
 class QDir;
 
@@ -51,10 +49,6 @@ namespace Tiled {
 class TILEDSHARED_EXPORT Properties : public QMap<QString,QVariant>
 {
 public:
-    void merge(const Properties &other);
-
-    QJsonArray toJson() const;
-    static Properties fromJson(const QJsonArray &json);
     static QMap<QString, QStringList> getEnums(Object* propertyObject);
     static QStringList getEnumsWithName(Object* propertyObject, QString name);
 };
@@ -99,15 +93,20 @@ private:
 };
 
 /**
+ * Collection of properties and their values.
+ */
+
+/**
  * Collection of properties with information about the consistency of their
  * presence and value over several property collections.
  */
-class TILEDSHARED_EXPORT AggregatedProperties : public QMap<QString, AggregatedPropertyData>
-{
-public:
-    void aggregate(const Properties &properties);
-};
+using AggregatedProperties = QMap<QString, AggregatedPropertyData>;
 
+TILEDSHARED_EXPORT void aggregateProperties(AggregatedProperties &aggregated, const Properties &properties);
+TILEDSHARED_EXPORT void mergeProperties(Properties &target, const Properties &source);
+
+TILEDSHARED_EXPORT QJsonArray propertiesToJson(const Properties &properties);
+TILEDSHARED_EXPORT Properties propertiesFromJson(const QJsonArray &json);
 
 TILEDSHARED_EXPORT int filePathTypeId();
 

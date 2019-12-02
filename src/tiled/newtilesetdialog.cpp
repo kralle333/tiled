@@ -43,7 +43,6 @@ static const char * const SPACING_KEY = "Tileset/Spacing";
 static const char * const MARGIN_KEY = "Tileset/Margin";
 
 using namespace Tiled;
-using namespace Tiled::Internal;
 
 enum TilesetType {
     TilesetImage,
@@ -104,6 +103,10 @@ NewTilesetDialog::NewTilesetDialog(QWidget *parent) :
     connect(mUi->tilesetType, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
             this, &NewTilesetDialog::tilesetTypeChanged);
     connect(mUi->dropperButton, &QAbstractButton::clicked, this, &NewTilesetDialog::pickColorFromImage);
+
+    connect(mUi->buttonBox, &QDialogButtonBox::accepted, this, &NewTilesetDialog::tryAccept);
+    connect(mUi->buttonBox, &QDialogButtonBox::rejected, this, &NewTilesetDialog::reject);
+
     mUi->imageGroupBox->setVisible(tilesetType == 0);
     updateOkButton();
 }

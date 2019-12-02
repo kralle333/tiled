@@ -39,8 +39,6 @@ class Tile;
 class TileLayer;
 class Tileset;
 
-namespace Internal {
-
 class AbstractTool;
 class LayerItem;
 class MapDocument;
@@ -62,14 +60,16 @@ public:
     MapDocument *mapDocument() const;
     void setMapDocument(MapDocument *map);
 
-    void enableSelectedTool();
-    void disableSelectedTool();
+    void setShowTileCollisionShapes(bool enabled);
+
+    QRectF mapBoundingRect() const;
 
     void setSelectedTool(AbstractTool *tool);
 
-protected:
-    void drawForeground(QPainter *painter, const QRectF &rect) override;
+signals:
+    void mapDocumentChanged(MapDocument *mapDocument);
 
+protected:
     bool event(QEvent *event) override;
 
     void keyPressEvent(QKeyEvent *event) override;
@@ -83,24 +83,14 @@ protected:
     void dragLeaveEvent(QGraphicsSceneDragDropEvent *event) override;
     void dragMoveEvent(QGraphicsSceneDragDropEvent *event) override;
 
-private slots:
-    void setGridVisible(bool visible);
-
+private:
     void refreshScene();
-
-    void currentLayerChanged();
 
     void mapChanged();
     void repaintTileset(Tileset *tileset);
 
-    void layerChanged(Layer *);
+    void tilesetReplaced(int index, Tileset *tileset, Tileset *oldTileset);
 
-    void adaptToTilesetTileSizeChanges();
-    void adaptToTileSizeChanges();
-
-    void tilesetReplaced();
-
-private:
     void updateDefaultBackgroundColor();
     void updateSceneRect();
 
@@ -109,13 +99,12 @@ private:
 
     bool eventFilter(QObject *object, QEvent *event) override;
 
-    MapDocument *mMapDocument;
+    MapDocument *mMapDocument = nullptr;
     QHash<MapDocument*, MapItem*> mMapItems;
-    AbstractTool *mSelectedTool;
-    AbstractTool *mActiveTool;
-    bool mGridVisible;
-    bool mUnderMouse;
-    Qt::KeyboardModifiers mCurrentModifiers;
+    AbstractTool *mSelectedTool = nullptr;
+    bool mUnderMouse = false;
+    bool mShowTileCollisionShapes = false;
+    Qt::KeyboardModifiers mCurrentModifiers = Qt::NoModifier;
     QPointF mLastMousePos;
     QColor mDefaultBackgroundColor;
 };
@@ -128,5 +117,4 @@ inline MapDocument *MapScene::mapDocument() const
     return mMapDocument;
 }
 
-} // namespace Internal
 } // namespace Tiled

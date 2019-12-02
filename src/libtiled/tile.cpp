@@ -43,7 +43,6 @@ Tile::Tile(int id, Tileset *tileset):
     mTerrain(-1),
     mScaleFactor(1.0),
     mProbability(1.0),
-    mObjectGroup(nullptr),
     mCurrentFrameIndex(0),
     mUnusedTime(0)
 {}
@@ -57,19 +56,12 @@ Tile::Tile(const QPixmap &image, int id, Tileset *tileset):
     mCroppedRectangle(0, 0, 0, 0),
     mTerrain(-1),
     mProbability(1.0),
-    mObjectGroup(nullptr),
     mCurrentFrameIndex(0),
     mUnusedTime(0)
 {}
 
 Tile::~Tile()
 {
-    if(mImageSource.isValid())
-    {
-        // We'll just assume that the tile came from here
-        ImageCache::remove(mImageSource.toLocalFile());
-    }
-    delete mObjectGroup;
 }
 
 /**
@@ -128,29 +120,24 @@ void Tile::setTerrain(unsigned terrain)
  * The Tile takes ownership over the ObjectGroup and it can't also be part of
  * a map.
  */
-void Tile::setObjectGroup(ObjectGroup *objectGroup)
+void Tile::setObjectGroup(std::unique_ptr<ObjectGroup> objectGroup)
 {
     Q_ASSERT(!objectGroup || !objectGroup->map());
 
     if (mObjectGroup == objectGroup)
         return;
 
-    delete mObjectGroup;
-    mObjectGroup = objectGroup;
+    mObjectGroup = std::move(objectGroup);
 }
 
 /**
  * Swaps the object group of this tile with \a objectGroup. The tile releases
  * ownership over its existing object group and takes ownership over the new
  * one.
- *
- * @return The previous object group referenced by this tile.
  */
-ObjectGroup *Tile::swapObjectGroup(ObjectGroup *objectGroup)
+void Tile::swapObjectGroup(std::unique_ptr<ObjectGroup> &objectGroup)
 {
-    ObjectGroup *previousObjectGroup = mObjectGroup;
-    mObjectGroup = objectGroup;
-    return previousObjectGroup;
+    std::swap(mObjectGroup, objectGroup);
 }
 
 /**
@@ -214,11 +201,13 @@ Tile *Tile::clone(Tileset *tileset) const
     c->setProperties(properties());
 
     c->mImageSource = mImageSource;
+    c->mImageStatus = mImageStatus;
+    c->mType = mType;
     c->mTerrain = mTerrain;
     c->mProbability = mProbability;
 
     if (mObjectGroup)
-        c->mObjectGroup = mObjectGroup->clone();
+        c->mObjectGroup.reset(mObjectGroup->clone());
 
     c->mFrames = mFrames;
     c->mCurrentFrameIndex = mCurrentFrameIndex;

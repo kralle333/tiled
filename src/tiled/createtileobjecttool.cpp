@@ -29,14 +29,14 @@
 #include "utils.h"
 
 using namespace Tiled;
-using namespace Tiled::Internal;
 
 CreateTileObjectTool::CreateTileObjectTool(QObject* parent)
-    : CreateObjectTool(parent)
+    : CreateObjectTool("CreateTileObjectTool", parent)
 {
-    QIcon icon(QLatin1String(":images/24x24/insert-image.png"));
-    icon.addFile(QLatin1String(":images/48x48/insert-image.png"));
+    QIcon icon(QLatin1String(":images/24/insert-image.png"));
+    icon.addFile(QLatin1String(":images/48/insert-image.png"));
     setIcon(icon);
+    setShortcut(Qt::Key_T);
     Utils::setThemeIcon(this, "insert-image");
     languageChangedImpl();
 }
@@ -53,29 +53,6 @@ void CreateTileObjectTool::mouseMovedWhileCreatingObject(const QPointF& pos, Qt:
 
     mNewMapObjectItem->mapObject()->setPosition(pixelCoords);
     mNewMapObjectItem->syncWithMapObject();
-    mNewMapObjectItem->setZValue(10000); // sync may change it
-    mNewMapObjectItem->setOpacity(0.75);
-}
-
-void CreateTileObjectTool::mousePressedWhileCreatingObject(QGraphicsSceneMouseEvent* event)
-{
-    if (event->button() == Qt::RightButton)
-        cancelNewMapObject();
-}
-
-void CreateTileObjectTool::mouseReleasedWhileCreatingObject(QGraphicsSceneMouseEvent* event)
-{
-    if (event->button() == Qt::LeftButton)
-        finishNewMapObject();
-}
-
-bool CreateTileObjectTool::startNewMapObject(const QPointF& pos, ObjectGroup* objectGroup)
-{
-    if (!CreateObjectTool::startNewMapObject(pos, objectGroup))
-        return false;
-
-    mNewMapObjectItem->setOpacity(0.75);
-    return true;
 }
 
 void CreateTileObjectTool::languageChanged()
@@ -87,7 +64,6 @@ void CreateTileObjectTool::languageChanged()
 void CreateTileObjectTool::languageChangedImpl()
 {
     setName(tr("Insert Tile"));
-    setShortcut(QKeySequence(tr("T")));
 }
 
 MapObject* CreateTileObjectTool::createNewMapObject()

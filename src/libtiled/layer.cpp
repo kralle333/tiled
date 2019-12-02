@@ -62,6 +62,23 @@ Layer::~Layer()
     }
 }
 
+void Layer::resetIds()
+{
+    mId = 0;        // reset out own ID
+
+    switch (layerType()) {
+    case ObjectGroupType:
+        static_cast<ObjectGroup*>(this)->resetObjectIds();
+        break;
+    case GroupLayerType:
+        for (Layer *layer : static_cast<GroupLayer*>(this)->layers())
+            layer->resetIds();
+        break;
+    default:
+        break;
+    }
+}
+
 /**
  * Returns the effective opacity, which is the opacity multiplied by the
  * opacity of any parent layers.
@@ -159,10 +176,23 @@ QPointF Layer::totalOffset() const
 }
 
 /**
+ * Returns whether this layer can be merged down onto the layer below.
+ */
+bool Layer::canMergeDown() const
+{
+    const int index = siblingIndex();
+    if (index < 1)
+        return false;
+
+    Layer *lowerLayer = siblings().at(index - 1);
+    return lowerLayer->canMergeWith(this);
+}
+
+/**
  * A helper function for initializing the members of the given instance to
  * those of this layer. Used by subclasses when cloning.
  *
- * Layer name, position and size are not cloned, since they are assumed to have
+ * Layer name, position and size are not copied, since they are assumed to have
  * already been passed to the constructor. Also, map ownership is not cloned,
  * since the clone is not added to the map.
  *
@@ -171,7 +201,7 @@ QPointF Layer::totalOffset() const
  */
 Layer *Layer::initializeClone(Layer *clone) const
 {
-    // mId is not copied, will be assigned when layer is added to a map
+    clone->mId = mId;
     clone->mOffset = mOffset;
     clone->mOpacity = mOpacity;
     clone->mVisible = mVisible;
@@ -206,17 +236,17 @@ Layer *LayerIterator::next()
     int index = mSiblingIndex;
 
     do {
+        Q_ASSERT(!layer || (index >= 0 && index < layer->siblings().size()));
+
+        // Traverse to next sibling
+        ++index;
+
         if (!layer) {
             // Traverse to the first layer of the map
-            if (mMap && index == -1 && mMap->layerCount() > 0) {
-                layer = mMap->layerAt(0);
-                index = 0;
-            } else {
-                return nullptr;
-            }
-        } else {
-            // Traverse to next sibling
-            ++index;
+            if (mMap && index < mMap->layerCount())
+                layer = mMap->layerAt(index);
+            else
+                break;
         }
 
         const auto siblings = layer->siblings();
@@ -293,24 +323,28 @@ void Layer::setAllowedTilesets(const QVector<Tiled::SharedTileset> tilesets)
 Layer *LayerIterator::previous()
 {
     Layer *layer = mCurrentLayer;
-    int index = mSiblingIndex - 1;
+    int index = mSiblingIndex;
 
     do {
+        Q_ASSERT(!layer || (index >= 0 && index < layer->siblings().size()));
+
+        // Traverse to previous sibling
+        --index;
+
         if (!layer) {
             // Traverse to the last layer of the map if at the end
-            if (mMap && index < mMap->layerCount() && mMap->layerCount() > 0) {
+            if (mMap && index >= 0 && index < mMap->layerCount())
                 layer = mMap->layerAt(index);
-            } else {
-                return nullptr;
-            }
+            else
+                break;
         } else {
             // Traverse down to last child if applicable
             if (layer->isGroupLayer()) {
                 auto groupLayer = static_cast<GroupLayer*>(layer);
                 if (groupLayer->layerCount() > 0) {
-                    mSiblingIndex = groupLayer->layerCount() - 1;
-                    mCurrentLayer = groupLayer->layerAt(mSiblingIndex);
-                    return mCurrentLayer;
+                    index = groupLayer->layerCount() - 1;
+                    layer = groupLayer->layerAt(index);
+                    continue;
                 }
             }
 
@@ -341,11 +375,11 @@ Layer *LayerIterator::previous()
         mSiblingIndex = -1;
     }
 
-    void LayerIterator::toBack()
-    {
-        mCurrentLayer = nullptr;
-        mSiblingIndex = mMap ? mMap->layerCount() : -1;
-    }
+void LayerIterator::toBack()
+{
+    mCurrentLayer = nullptr;
+    mSiblingIndex = mMap ? mMap->layerCount() : 0;
+}
 
 bool LayerIterator::operator==(const LayerIterator &other) const
 {

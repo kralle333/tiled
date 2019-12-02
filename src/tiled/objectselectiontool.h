@@ -26,10 +26,11 @@
 #include <QSet>
 #include <QVector>
 
+#include <memory>
+
 class QGraphicsItem;
 
 namespace Tiled {
-namespace Internal {
 
 class Handle;
 class OriginIndicator;
@@ -60,14 +61,16 @@ public:
 
     void languageChanged() override;
 
-private slots:
+protected:
+    void changeEvent(const ChangeEvent &event) override;
+
+private:
     void updateHandles();
     void updateHandlesAndOrigin();
     void updateHandleVisibility();
 
-    void objectsRemoved(const QList<MapObject *> &);
+    void objectsAboutToBeRemoved(const QList<MapObject *> &);
 
-private:
     enum Action {
         NoAction,
         Selecting,
@@ -115,7 +118,14 @@ private:
     void setMode(Mode mode);
     void saveSelectionState();
 
-    void updateHoveredItem(const QPointF &pos);
+    enum AbortReason {
+        UserInteraction,
+        Deactivated
+    };
+
+    void abortCurrentAction(AbortReason reason = UserInteraction,
+                            const QList<MapObject *> &removedObjects = QList<MapObject*>());
+
     void refreshCursor();
 
     QPointF snapToGrid(const QPointF &pos,
@@ -134,8 +144,8 @@ private:
         qreal oldRotation;
     };
 
-    SelectionRectangle *mSelectionRectangle;
-    QGraphicsItem *mOriginIndicator;
+    std::unique_ptr<SelectionRectangle> mSelectionRectangle;
+    std::unique_ptr<QGraphicsItem> mOriginIndicator;
     RotateHandle *mRotateHandles[4];
     ResizeHandle *mResizeHandles[8];
     bool mMousePressed;
@@ -150,19 +160,17 @@ private:
 
     QVector<MovingObject> mMovingObjects;
 
-    QPointF mOldOriginPosition;
-
     QPointF mAlignPosition;
-    QPointF mOrigin;
+    QPointF mOriginPos;
     bool mResizingLimitHorizontal;
     bool mResizingLimitVertical;
     Mode mMode;
     Action mAction;
     QPointF mStart;
     QPointF mStartOffset;
+    QPointF mLastMousePos;
     QPoint mScreenStart;
     Qt::KeyboardModifiers mModifiers;
 };
 
-} // namespace Internal
 } // namespace Tiled

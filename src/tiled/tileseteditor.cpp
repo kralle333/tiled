@@ -20,20 +20,26 @@
 
 #include "tileseteditor.h"
 
+#include "actionmanager.h"
 #include "addremovemapobject.h"
 #include "addremoveterrain.h"
 #include "addremovetiles.h"
 #include "addremovewangset.h"
+#include "changeterrain.h"
 #include "changetileterrain.h"
-#include "changewangsetdata.h"
 #include "changewangcolordata.h"
+#include "changewangsetdata.h"
+#include "documentmanager.h"
 #include "enumseditordialog.h"
 #include "erasetiles.h"
 #include "generatecroppedrectangle.h"
+#include "issuescounter.h"
 #include "maintoolbar.h"
 #include "mapdocument.h"
 #include "mapobject.h"
 #include "modifyenumlist.h"
+#include "newsbutton.h"
+#include "newversionbutton.h"
 #include "objectgroup.h"
 #include "objecttemplate.h"
 #include "preferences.h"
@@ -82,43 +88,6 @@ static const char SIZE_KEY[] = "TilesetEditor/Size";
 static const char STATE_KEY[] = "TilesetEditor/State";
 
 namespace Tiled {
-namespace Internal {
-
-namespace {
-
-class SetTerrainImage : public QUndoCommand
-{
-public:
-    SetTerrainImage(TilesetDocument *tilesetDocument,
-                    int terrainId,
-                    int tileId)
-        : QUndoCommand(QCoreApplication::translate("Undo Commands",
-                                                   "Change Terrain Image"))
-        , mTerrainModel(tilesetDocument->terrainModel())
-        , mTerrainId(terrainId)
-        , mOldImageTileId(tilesetDocument->tileset()->terrain(terrainId)->imageTileId())
-        , mNewImageTileId(tileId)
-    {}
-
-    void undo() override
-    {
-        mTerrainModel->setTerrainImage(mTerrainId, mOldImageTileId);
-    }
-
-    void redo() override
-    {
-        mTerrainModel->setTerrainImage(mTerrainId, mNewImageTileId);
-    }
-
-private:
-    TilesetTerrainModel *mTerrainModel;
-    int mTerrainId;
-    int mOldImageTileId;
-    int mNewImageTileId;
-};
-
-} // anonymous namespace
-
 
 class TilesetEditorWindow : public QMainWindow
 {
@@ -174,6 +143,7 @@ TilesetEditor::TilesetEditor(QObject *parent)
     , mShowAnimationEditor(new QAction(this))
     , mGenerateCroppedBounds(new QAction(this))
     , mEnumerationEditor(new QAction(this))
+    , mDynamicWrappingToggle(new QAction(this))
     , mPropertiesDock(new PropertiesDock(mMainWindow))
     , mUndoDock(new UndoDock(mMainWindow))
     , mTerrainDock(new TerrainDock(mMainWindow))
@@ -186,9 +156,7 @@ TilesetEditor::TilesetEditor(QObject *parent)
     , mCurrentTilesetDocument(nullptr)
     , mCurrentTile(nullptr)
 {
-#if QT_VERSION >= 0x050600
     mMainWindow->setDockOptions(mMainWindow->dockOptions() | QMainWindow::GroupedDragging);
-#endif
     mMainWindow->setDockNestingEnabled(true);
     mMainWindow->setCentralWidget(mWidgetStack);
 
@@ -196,23 +164,33 @@ TilesetEditor::TilesetEditor(QObject *parent)
     QAction *editCollision = mTileCollisionDock->toggleViewAction();
     QAction *editWang = mWangDock->toggleViewAction();
 
-    mAddTiles->setIcon(QIcon(QLatin1String(":images/16x16/add.png")));
-    mRemoveTiles->setIcon(QIcon(QLatin1String(":images/16x16/remove.png")));
-    mShowAnimationEditor->setIcon(QIcon(QLatin1String(":images/24x24/animation-edit.png")));
+    ActionManager::registerAction(editTerrain, "EditTerrain");
+    ActionManager::registerAction(editCollision, "EditCollision");
+    ActionManager::registerAction(editWang, "EditWang");
+    ActionManager::registerAction(mAddTiles, "AddTiles");
+    ActionManager::registerAction(mRemoveTiles, "RemoveTiles");
+    ActionManager::registerAction(mShowAnimationEditor, "ShowAnimationEditor");
+    ActionManager::registerAction(mDynamicWrappingToggle, "DynamicWrappingToggle");
+
+    mAddTiles->setIcon(QIcon(QLatin1String(":images/16/add.png")));
+    mRemoveTiles->setIcon(QIcon(QLatin1String(":images/16/remove.png")));
+    mShowAnimationEditor->setIcon(QIcon(QLatin1String(":images/24/animation-edit.png")));
     mShowAnimationEditor->setCheckable(true);
     mShowAnimationEditor->setIconVisibleInMenu(false);
-    mGenerateCroppedBounds->setIcon(QIcon(QLatin1String(":images/48x48/generate-cropped-rectangle.png")));
+    mGenerateCroppedBounds->setIcon(QIcon(QLatin1String(":images/48/generate-cropped-rectangle.png")));
     mGenerateCroppedBounds->setIconVisibleInMenu(false);
     mGenerateCroppedBounds->setToolTip(tr("Generate Cropped Rectangles"));
-    mEnumerationEditor->setIcon(QIcon(QLatin1String(":images/22x22/stock-tool-by-list-select.png")));
+    mEnumerationEditor->setIcon(QIcon(QLatin1String(":images/22/stock-tool-by-list-select.png")));
     mEnumerationEditor->setIconVisibleInMenu(false);
     mEnumerationEditor->setToolTip(tr("Edit Enumerations"));
-    editTerrain->setIcon(QIcon(QLatin1String(":images/24x24/terrain.png")));
+    editTerrain->setIcon(QIcon(QLatin1String(":images/24/terrain.png")));
     editTerrain->setIconVisibleInMenu(false);
-    editCollision->setIcon(QIcon(QLatin1String(":images/48x48/tile-collision-editor.png")));
+    editCollision->setIcon(QIcon(QLatin1String(":images/48/tile-collision-editor.png")));
     editCollision->setIconVisibleInMenu(false);
-    editWang->setIcon(QIcon(QLatin1String(":images/24x24/wangtile.png")));
+    editWang->setIcon(QIcon(QLatin1String(":images/24/wangtile.png")));
     editWang->setIconVisibleInMenu(false);
+    mDynamicWrappingToggle->setCheckable(true);
+    mDynamicWrappingToggle->setIcon(QIcon(QLatin1String("://images/scalable/wrap.svg")));
 
     Utils::setThemeIcon(mAddTiles, "add");
     Utils::setThemeIcon(mRemoveTiles, "remove");
@@ -228,9 +206,15 @@ TilesetEditor::TilesetEditor(QObject *parent)
     mTilesetToolBar->addAction(mShowAnimationEditor);
     mTilesetToolBar->addAction(mGenerateCroppedBounds);
     mTilesetToolBar->addAction(mEnumerationEditor);
+    mTilesetToolBar->addSeparator();
+    mTilesetToolBar->addAction(mDynamicWrappingToggle);
 
-    mMainWindow->statusBar()->addPermanentWidget(mZoomComboBox);
-    mMainWindow->statusBar()->addWidget(mStatusInfoLabel);
+    auto statusBar = mMainWindow->statusBar();
+    statusBar->addPermanentWidget(mZoomComboBox);
+    statusBar->addPermanentWidget(new NewsButton(statusBar));
+    statusBar->addPermanentWidget(new NewVersionButton(NewVersionButton::AutoVisible, statusBar));
+    statusBar->addWidget(new IssuesCounter(statusBar));
+    statusBar->addWidget(mStatusInfoLabel);
 
     mTemplatesDock->setPropertiesDock(mPropertiesDock);
 
@@ -247,6 +231,10 @@ TilesetEditor::TilesetEditor(QObject *parent)
     connect(editCollision, &QAction::toggled, this, &TilesetEditor::setEditCollision);
     connect(editWang, &QAction::toggled, this, &TilesetEditor::setEditWang);
     connect(mShowAnimationEditor, &QAction::toggled, mTileAnimationEditor, &TileAnimationEditor::setVisible);
+    connect(mDynamicWrappingToggle, &QAction::toggled, this, [this] (bool checked) {
+        if (TilesetView *view = currentTilesetView())
+            view->setDynamicWrapping(checked);
+    });
 
     connect(mAddTiles, &QAction::triggered, this, &TilesetEditor::openAddTilesDialog);
     connect(mGenerateCroppedBounds, &QAction::triggered, this, &TilesetEditor::generateCroppedRectangles);
@@ -265,13 +253,15 @@ TilesetEditor::TilesetEditor(QObject *parent)
     connect(mWangDock, &WangDock::removeWangSetRequested, this, &TilesetEditor::removeWangSet);
     connect(mWangDock->wangColorView(), &WangColorView::wangColorColorPicked,
             this, &TilesetEditor::setWangColorColor);
+    connect(DocumentManager::instance(), &DocumentManager::selectCustomPropertyRequested,
+            mPropertiesDock, &PropertiesDock::selectCustomProperty);
 
     connect(this, &TilesetEditor::currentTileChanged, mTileAnimationEditor, &TileAnimationEditor::setTile);
     connect(this, &TilesetEditor::currentTileChanged, mTileCollisionDock, &TileCollisionDock::setTile);
     connect(this, &TilesetEditor::currentTileChanged, mTemplatesDock, &TemplatesDock::setTile);
 
     connect(mTileCollisionDock, &TileCollisionDock::dummyMapDocumentChanged,
-            this, [this]() {
+            this, [this] {
         mPropertiesDock->setDocument(mCurrentTilesetDocument);
     });
     connect(mTileCollisionDock, &TileCollisionDock::hasSelectedObjectsChanged,
@@ -296,6 +286,8 @@ void TilesetEditor::saveState()
     QSettings *settings = Preferences::instance()->settings();
     settings->setValue(QLatin1String(SIZE_KEY), mMainWindow->size());
     settings->setValue(QLatin1String(STATE_KEY), mMainWindow->saveState());
+
+    mTileCollisionDock->saveState();
 }
 
 void TilesetEditor::restoreState()
@@ -306,6 +298,8 @@ void TilesetEditor::restoreState()
         mMainWindow->resize(size.width(), size.height());
         mMainWindow->restoreState(settings->value(QLatin1String(STATE_KEY)).toByteArray());
     }
+
+    mTileCollisionDock->restoreState();
 }
 
 void TilesetEditor::addDocument(Document *document)
@@ -339,6 +333,8 @@ void TilesetEditor::addDocument(Document *document)
 
     connect(tilesetDocument, &TilesetDocument::tilesetChanged,
             this, &TilesetEditor::tilesetChanged);
+    connect(tilesetDocument, &TilesetDocument::selectedTilesChanged,
+            this, &TilesetEditor::selectedTilesChanged);
 
     connect(view, &TilesetView::createNewTerrain, this, &TilesetEditor::addTerrainType);
     connect(view, &TilesetView::terrainImageSelected, this, &TilesetEditor::setTerrainImage);
@@ -410,6 +406,8 @@ void TilesetEditor::setCurrentDocument(Document *document)
     mCurrentTilesetDocument = tilesetDocument;
 
     if (tilesetDocument) {
+        mDynamicWrappingToggle->setChecked(tilesetView->dynamicWrapping());
+
         currentChanged(tilesetView->currentIndex());
         selectionChanged();
     }
@@ -442,6 +440,7 @@ QList<QDockWidget *> TilesetEditor::dockWidgets() const
         mUndoDock,
         mTerrainDock,
         mTileCollisionDock,
+        mTemplatesDock,
         mWangDock
     };
 }
@@ -565,7 +564,9 @@ void TilesetEditor::selectionChanged()
         if (Tile *tile = model->tileAt(index))
             selectedTiles.append(tile);
 
+    mSettingSelectedTiles = true;
     mCurrentTilesetDocument->setSelectedTiles(selectedTiles);
+    mSettingSelectedTiles = false;
 }
 
 void TilesetEditor::currentChanged(const QModelIndex &index)
@@ -595,6 +596,32 @@ void TilesetEditor::tilesetChanged()
 
     tilesetView->updateBackgroundColor();
     model->tilesetChanged();
+}
+
+void TilesetEditor::selectedTilesChanged()
+{
+    if (mSettingSelectedTiles)
+        return;
+
+    if (mCurrentTilesetDocument != sender())
+        return;
+
+    TilesetView *tilesetView = currentTilesetView();
+    const TilesetModel *model = tilesetView->tilesetModel();
+
+    QItemSelection tileSelection;
+
+    for (Tile *tile : mCurrentTilesetDocument->selectedTiles()) {
+        const QModelIndex modelIndex = model->tileIndex(tile);
+        tileSelection.select(modelIndex, modelIndex);
+    }
+
+    QItemSelectionModel *selectionModel = tilesetView->selectionModel();
+    selectionModel->select(tileSelection, QItemSelectionModel::SelectCurrent);
+    if (!tileSelection.isEmpty()) {
+        selectionModel->setCurrentIndex(tileSelection.first().topLeft(),
+                                        QItemSelectionModel::NoUpdate);
+    }
 }
 
 void TilesetEditor::updateTilesetView(Tileset *tileset)
@@ -627,8 +654,9 @@ void TilesetEditor::retranslateUi()
     mAddTiles->setText(tr("Add Tiles"));
     mRemoveTiles->setText(tr("Remove Tiles"));
     mShowAnimationEditor->setText(tr("Tile Animation Editor"));
+    mDynamicWrappingToggle->setText(tr("Dynamically Wrap Tiles"));
 
-    mTileCollisionDock->toggleViewAction()->setShortcut(QCoreApplication::translate("Tiled::Internal::MainWindow", "Ctrl+Shift+O"));
+    mTileCollisionDock->toggleViewAction()->setShortcut(Qt::CTRL + Qt::SHIFT + Qt::Key_O);
 }
 
 static bool hasTileInTileset(const QUrl &imageSource, const Tileset &tileset)
@@ -774,19 +802,34 @@ static void removeTileReferences(MapDocument *mapDocument,
     QUndoStack *undoStack = mapDocument->undoStack();
     undoStack->beginMacro(QCoreApplication::translate("Undo Commands", "Remove Tiles"));
 
-    for (Layer *layer : mapDocument->map()->layers()) {
-        if (TileLayer *tileLayer = layer->asTileLayer()) {
+    QList<MapObject*> objectsToRemove;
+
+    LayerIterator it(mapDocument->map());
+    while (Layer *layer = it.next()) {
+        switch (layer->layerType()) {
+        case Layer::TileLayerType: {
+            auto tileLayer = static_cast<TileLayer*>(layer);
             const QRegion refs = tileLayer->region(condition);
             if (!refs.isEmpty())
                 undoStack->push(new EraseTiles(mapDocument, tileLayer, refs));
-
-        } else if (ObjectGroup *objectGroup = layer->asObjectGroup()) {
+            break;
+        }
+        case Layer::ObjectGroupType: {
+            auto objectGroup = static_cast<ObjectGroup*>(layer);
             for (MapObject *object : *objectGroup) {
                 if (condition(object->cell()))
-                    undoStack->push(new RemoveMapObject(mapDocument, object));
+                    objectsToRemove.append(object);
             }
+            break;
+        }
+        case Layer::ImageLayerType:
+        case Layer::GroupLayerType:
+            break;
         }
     }
+
+    if (!objectsToRemove.isEmpty())
+        undoStack->push(new RemoveMapObjects(mapDocument, objectsToRemove));
 
     undoStack->endMacro();
 }
@@ -1072,7 +1115,6 @@ void TilesetEditor::updateAddRemoveActions()
     mRemoveTiles->setEnabled(isCollection && hasSelection);
 }
 
-} // namespace Internal
 } // namespace Tiled
 
 #include "tileseteditor.moc"

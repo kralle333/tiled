@@ -23,17 +23,34 @@
 
 #include "actionmanager.h"
 #include "documentmanager.h"
+#include "issuescounter.h"
+#include "newsbutton.h"
+#include "newversionbutton.h"
 
 #include <QAction>
+#include <QStatusBar>
 
 namespace Tiled {
-namespace Internal {
 
 NoEditorWidget::NoEditorWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::NoEditorWidget)
 {
     ui->setupUi(this);
+
+    // Transfer margin and spacing to the internal layout
+    ui->verticalLayout->setMargin(ui->gridLayout->margin());
+    ui->verticalLayout->setSpacing(ui->gridLayout->spacing());
+    ui->gridLayout->setMargin(0);
+    ui->gridLayout->setSpacing(0);
+
+    // Add a status bar to the bottom
+    auto statusBar = new QStatusBar;
+    statusBar->addPermanentWidget(new NewsButton(statusBar));
+    statusBar->addPermanentWidget(new NewVersionButton(NewVersionButton::AutoVisible, statusBar));
+    statusBar->addWidget(new IssuesCounter(statusBar));
+
+    ui->gridLayout->addWidget(statusBar, 3, 0, 1, 3);
 
     connect(ui->newMapButton, &QPushButton::clicked, this, &NoEditorWidget::newMap);
     connect(ui->newMapFromTemplateButton, &QPushButton::clicked, this, &NoEditorWidget::newMapFromTemplate);
@@ -60,7 +77,7 @@ void NoEditorWidget::changeEvent(QEvent *e)
 
 void NoEditorWidget::newMap()
 {
-    ActionManager::action("file.new_map")->trigger();
+    ActionManager::action("NewMap")->trigger();
 }
 void NoEditorWidget::newMapFromTemplate()
 {
@@ -68,7 +85,7 @@ void NoEditorWidget::newMapFromTemplate()
 }
 void NoEditorWidget::newTileset()
 {
-    ActionManager::action("file.new_tileset")->trigger();
+    ActionManager::action("NewTileset")->trigger();
 }
 
 void NoEditorWidget::openFile()
@@ -76,5 +93,4 @@ void NoEditorWidget::openFile()
     DocumentManager::instance()->openFileDialog();
 }
 
-} // namespace Internal
 } // namespace Tiled

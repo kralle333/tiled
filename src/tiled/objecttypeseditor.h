@@ -35,7 +35,6 @@ class QtVariantProperty;
 class QtVariantPropertyManager;
 
 namespace Tiled {
-namespace Internal {
 
 class ObjectTypesModel;
 
@@ -54,12 +53,13 @@ protected:
     void closeEvent(QCloseEvent *) override;
     void changeEvent(QEvent *e) override;
 
-private slots:
+private:
     void addObjectType();
     void selectedObjectTypesChanged();
     void removeSelectedObjectTypes();
     void objectTypeIndexClicked(const QModelIndex &index);
     void applyObjectTypes();
+    void objectTypesChanged();
     void applyPropertyToSelectedTypes(const QString &name, const QVariant &value);
     void removePropertyFromSelectedTypes(const QString &name);
 
@@ -80,7 +80,6 @@ private slots:
     void selectFirstType();
     void currentItemChanged(QtBrowserItem *item);
 
-private:
     void retranslateUi();
 
     QtVariantProperty *createProperty(int type,
@@ -94,7 +93,8 @@ private:
     QHash<QString, QtVariantProperty *> mNameToProperty;
 
     AggregatedProperties mProperties;
-    bool mUpdating;
+    bool mUpdating = false;
+    bool mSettingPrefObjectTypes = false;
 
     QAction *mAddObjectTypeAction;
     QAction *mRemoveObjectTypeAction;
@@ -104,5 +104,4 @@ private:
     QAction *mRenamePropertyAction;
 };
 
-} // namespace Internal
 } // namespace Tiled

@@ -48,15 +48,9 @@
 #include "qtcompat_p.h"
 
 using namespace Tiled;
-using namespace Tiled::Internal;
 
-MapScene::MapScene(QObject *parent):
-    QGraphicsScene(parent),
-    mMapDocument(nullptr),
-    mSelectedTool(nullptr),
-    mActiveTool(nullptr),
-    mUnderMouse(false),
-    mCurrentModifiers(Qt::NoModifier)
+MapScene::MapScene(QObject *parent)
+    : QGraphicsScene(parent)
 {
     updateDefaultBackgroundColor();
 
@@ -68,12 +62,6 @@ MapScene::MapScene(QObject *parent):
             this, &MapScene::repaintTileset);
     connect(tilesetManager, &TilesetManager::repaintTileset,
             this, &MapScene::repaintTileset);
-
-    Preferences *prefs = Preferences::instance();
-    connect(prefs, &Preferences::showGridChanged, this, &MapScene::setGridVisible);
-    connect(prefs, &Preferences::gridColorChanged, this, [this] { update(); });
-
-    mGridVisible = prefs->showGrid();
 
     WorldManager &worldManager = WorldManager::instance();
     connect(&worldManager, &WorldManager::worldsChanged, this, &MapScene::refreshScene);
@@ -101,19 +89,37 @@ void MapScene::setMapDocument(MapDocument *mapDocument)
     if (mMapDocument) {
         connect(mMapDocument, &MapDocument::mapChanged,
                 this, &MapScene::mapChanged);
-        connect(mMapDocument, &MapDocument::layerChanged,
-                this, &MapScene::layerChanged);
-        connect(mMapDocument, &MapDocument::currentLayerChanged,
-                this, &MapScene::currentLayerChanged);
         connect(mMapDocument, &MapDocument::tilesetTileOffsetChanged,
-                this, &MapScene::adaptToTilesetTileSizeChanges);
+                this, [this] { update(); });
         connect(mMapDocument, &MapDocument::tileImageSourceChanged,
-                this, &MapScene::adaptToTileSizeChanges);
+                this, [this] { update(); });
         connect(mMapDocument, &MapDocument::tilesetReplaced,
                 this, &MapScene::tilesetReplaced);
     }
 
     refreshScene();
+    emit mapDocumentChanged(mMapDocument);
+}
+
+void MapScene::setShowTileCollisionShapes(bool enabled)
+{
+    if (mShowTileCollisionShapes == enabled)
+        return;
+
+    mShowTileCollisionShapes = enabled;
+    for (auto mapItem : qAsConst(mMapItems))
+        mapItem->setShowTileCollisionShapes(enabled);
+}
+
+/**
+ * Returns the bounding rect of the map. This can be different from the
+ * sceneRect() when multiple maps are displayed.
+ */
+QRectF MapScene::mapBoundingRect() const
+{
+    if (auto mapItem = mMapItems.value(mMapDocument))
+        return mapItem->boundingRect();
+    return QRectF();
 }
 
 /**
@@ -121,7 +127,28 @@ void MapScene::setMapDocument(MapDocument *mapDocument)
  */
 void MapScene::setSelectedTool(AbstractTool *tool)
 {
-    mSelectedTool = tool;
+    if (mSelectedTool == tool)
+        return;
+
+    if (mSelectedTool) {
+        if (mUnderMouse)
+            mSelectedTool->mouseLeft();
+        mSelectedTool->deactivate(this);
+        mSelectedTool = nullptr;
+    }
+
+    if (tool && mMapDocument) {
+        mSelectedTool = tool;
+        mSelectedTool->activate(this);
+
+        mCurrentModifiers = QApplication::keyboardModifiers();
+        mSelectedTool->modifiersChanged(mCurrentModifiers);
+
+        if (mUnderMouse) {
+            mSelectedTool->mouseEntered();
+            mSelectedTool->mouseMoved(mLastMousePos, mCurrentModifiers);
+        }
+    }
 }
 
 /**
@@ -138,16 +165,17 @@ void MapScene::refreshScene()
         return;
     }
 
-    WorldManager &worldManager = WorldManager::instance();
+    const WorldManager &worldManager = WorldManager::instance();
+    const QString currentMapFile = mMapDocument->canonicalFilePath();
 
-    if (const World *world = worldManager.worldForMap(mMapDocument->fileName())) {
-        const QPoint currentMapPosition = world->mapRect(mMapDocument->fileName()).topLeft();
-        auto const contextMaps = world->contextMaps(mMapDocument->fileName());
+    if (const World *world = worldManager.worldForMap(currentMapFile)) {
+        const QPoint currentMapPosition = world->mapRect(currentMapFile).topLeft();
+        auto const contextMaps = world->contextMaps(currentMapFile);
 
         for (const World::MapEntry &mapEntry : contextMaps) {
             MapDocumentPtr mapDocument;
 
-            if (mapEntry.fileName == mMapDocument->fileName()) {
+            if (mapEntry.fileName == currentMapFile) {
                 mapDocument = mMapDocument->sharedFromThis();
             } else {
                 auto doc = DocumentManager::instance()->loadDocument(mapEntry.fileName);
@@ -206,51 +234,13 @@ MapItem *MapScene::takeOrCreateMapItem(const MapDocumentPtr &mapDocument, MapIte
     auto mapItem = mMapItems.take(mapDocument.data());
     if (!mapItem) {
         mapItem = new MapItem(mapDocument, displayMode);
+        mapItem->setShowTileCollisionShapes(mShowTileCollisionShapes);
         connect(mapItem, &MapItem::boundingRectChanged, this, &MapScene::updateSceneRect);
         addItem(mapItem);
     } else {
         mapItem->setDisplayMode(displayMode);
     }
     return mapItem;
-}
-
-/**
- * Enables the selected tool at this map scene.
- * Therefore it tells that tool, that this is the active map scene.
- */
-void MapScene::enableSelectedTool()
-{
-    if (!mSelectedTool || !mMapDocument)
-        return;
-
-    mActiveTool = mSelectedTool;
-    mActiveTool->activate(this);
-
-    mCurrentModifiers = QApplication::keyboardModifiers();
-    mActiveTool->modifiersChanged(mCurrentModifiers);
-
-    if (mUnderMouse) {
-        mActiveTool->mouseEntered();
-        mActiveTool->mouseMoved(mLastMousePos, Qt::KeyboardModifiers());
-    }
-}
-
-void MapScene::disableSelectedTool()
-{
-    if (!mActiveTool)
-        return;
-
-    if (mUnderMouse)
-        mActiveTool->mouseLeft();
-    mActiveTool->deactivate(this);
-    mActiveTool = nullptr;
-}
-
-void MapScene::currentLayerChanged()
-{
-    // New layer may have a different offset, affecting the grid
-    if (mGridVisible)
-        update();
 }
 
 /**
@@ -275,68 +265,12 @@ void MapScene::repaintTileset(Tileset *tileset)
     }
 }
 
-/**
- * A layer has changed. This can mean that the layer visibility, opacity or
- * offset changed.
- */
-void MapScene::layerChanged(Layer *)
+void MapScene::tilesetReplaced(int index, Tileset *tileset, Tileset *oldTileset)
 {
-    // Layer offset may have changed, affecting the grid
-    if (mGridVisible)
-        update();
-}
+    Q_UNUSED(index);
+    Q_UNUSED(oldTileset);
 
-/**
- * This function should be called when any tiles in the given tileset may have
- * changed their size or offset or image.
- */
-void MapScene::adaptToTilesetTileSizeChanges()
-{
-    update();
-}
-
-void MapScene::adaptToTileSizeChanges()
-{
-    update();
-}
-
-void MapScene::tilesetReplaced()
-{
-    adaptToTilesetTileSizeChanges();
-}
-
-/**
- * Sets whether the tile grid is visible.
- */
-void MapScene::setGridVisible(bool visible)
-{
-    if (mGridVisible == visible)
-        return;
-
-    mGridVisible = visible;
-    update();
-}
-
-/**
- * QGraphicsScene::drawForeground override that draws the tile grid.
- */
-void MapScene::drawForeground(QPainter *painter, const QRectF &rect)
-{
-    if (!mMapDocument || !mGridVisible)
-        return;
-
-    QPointF offset;
-
-    // Take into account the offset of the current layer
-    if (Layer *layer = mMapDocument->currentLayer()) {
-        offset = layer->totalOffset();
-        painter->translate(offset);
-    }
-
-    Preferences *prefs = Preferences::instance();
-    mMapDocument->renderer()->drawGrid(painter,
-                                       rect.translated(-offset),
-                                       prefs->gridColor());
+    repaintTileset(tileset);
 }
 
 /**
@@ -347,13 +281,13 @@ bool MapScene::event(QEvent *event)
     switch (event->type()) {
     case QEvent::Enter:
         mUnderMouse = true;
-        if (mActiveTool)
-            mActiveTool->mouseEntered();
+        if (mSelectedTool)
+            mSelectedTool->mouseEntered();
         break;
     case QEvent::Leave:
         mUnderMouse = false;
-        if (mActiveTool)
-            mActiveTool->mouseLeft();
+        if (mSelectedTool)
+            mSelectedTool->mouseLeft();
         break;
     default:
         break;
@@ -364,10 +298,10 @@ bool MapScene::event(QEvent *event)
 
 void MapScene::keyPressEvent(QKeyEvent *event)
 {
-    if (mActiveTool)
-        mActiveTool->keyPressed(event);
+    if (mSelectedTool)
+        mSelectedTool->keyPressed(event);
 
-    if (!(mActiveTool && event->isAccepted()))
+    if (!(mSelectedTool && event->isAccepted()))
         QGraphicsScene::keyPressEvent(event);
 }
 
@@ -379,11 +313,16 @@ void MapScene::mouseMoveEvent(QGraphicsSceneMouseEvent *mouseEvent)
         return;
 
     QGraphicsScene::mouseMoveEvent(mouseEvent);
-    if (mouseEvent->isAccepted())
-        return;
 
-    if (mActiveTool) {
-        mActiveTool->mouseMoved(mouseEvent->scenePos(),
+    // Currently we always want to inform the active tool about mouse move
+    // events, regardless of whether this event was delived to a graphics item
+    // as a hover event. This is due to the behavior of MapItem, which needs
+    // to accept hover events but should not block them here.
+//    if (mouseEvent->isAccepted())
+//        return;
+
+    if (mSelectedTool) {
+        mSelectedTool->mouseMoved(mouseEvent->scenePos(),
                                 mouseEvent->modifiers());
         mouseEvent->accept();
     }
@@ -395,9 +334,9 @@ void MapScene::mousePressEvent(QGraphicsSceneMouseEvent *mouseEvent)
     if (mouseEvent->isAccepted())
         return;
 
-    if (mActiveTool) {
+    if (mSelectedTool) {
         mouseEvent->accept();
-        mActiveTool->mousePressed(mouseEvent);
+        mSelectedTool->mousePressed(mouseEvent);
     }
 }
 
@@ -407,9 +346,9 @@ void MapScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *mouseEvent)
     if (mouseEvent->isAccepted())
         return;
 
-    if (mActiveTool) {
+    if (mSelectedTool) {
         mouseEvent->accept();
-        mActiveTool->mouseReleased(mouseEvent);
+        mSelectedTool->mouseReleased(mouseEvent);
     }
 }
 
@@ -419,9 +358,9 @@ void MapScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *mouseEvent)
     if (mouseEvent->isAccepted())
         return;
 
-    if (mActiveTool) {
+    if (mSelectedTool) {
         mouseEvent->accept();
-        mActiveTool->mouseDoubleClicked(mouseEvent);
+        mSelectedTool->mouseDoubleClicked(mouseEvent);
     }
 }
 
@@ -481,13 +420,13 @@ void MapScene::dropEvent(QGraphicsSceneDragDropEvent *event)
     newMapObject->syncWithTemplate();
     newMapObject->setPosition(event->scenePos());
 
-    auto addObjectCommand = new AddMapObject(mapDocument(),
-                                             objectGroup,
-                                             newMapObject);
+    auto addObjectCommand = new AddMapObjects(mapDocument(),
+                                              objectGroup,
+                                              newMapObject);
 
     mapDocument()->undoStack()->push(addObjectCommand);
 
-    mapDocument()->setSelectedObjects(QList<MapObject*>() << newMapObject);
+    mapDocument()->setSelectedObjects({newMapObject});
 }
 
 void MapScene::dragLeaveEvent(QGraphicsSceneDragDropEvent *event)
@@ -508,8 +447,8 @@ bool MapScene::eventFilter(QObject *, QEvent *event)
             QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
             Qt::KeyboardModifiers newModifiers = keyEvent->modifiers();
 
-            if (mActiveTool && newModifiers != mCurrentModifiers) {
-                mActiveTool->modifiersChanged(newModifiers);
+            if (mSelectedTool && newModifiers != mCurrentModifiers) {
+                mSelectedTool->modifiersChanged(newModifiers);
                 mCurrentModifiers = newModifiers;
             }
         }

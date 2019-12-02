@@ -43,18 +43,13 @@
 
 namespace Tiled {
 
+class MapRenderer;
 class ObjectGroup;
 class ObjectTemplate;
 class Tile;
 
 struct TILEDSHARED_EXPORT TextData
 {
-    enum FontAttributes {
-        FontFamily  = 0x1,
-        FontSize    = 0x2,
-        FontStyle   = 0x8
-    };
-
     TextData();
 
     QString text;
@@ -79,6 +74,8 @@ struct TILEDSHARED_EXPORT TextData
  */
 class TILEDSHARED_EXPORT MapObject : public Object
 {
+    Q_OBJECT
+
 public:
     /**
      * Enumerates the different object shapes. Rectangle is the default shape.
@@ -128,27 +125,30 @@ public:
      * Can be used to get/set property values using QVariant.
      */
     enum Property {
-        NameProperty             = 1 << 0,
-        TypeProperty             = 1 << 1,
-        VisibleProperty          = 1 << 2,
-        TextProperty             = 1 << 3,
-        TextFontProperty         = 1 << 4,
-        TextAlignmentProperty    = 1 << 5,
-        TextWordWrapProperty     = 1 << 6,
-        TextColorProperty        = 1 << 7,
-        SizeProperty             = 1 << 8,
-        RotationProperty         = 1 << 9,
-        CellProperty             = 1 << 10,
-        ShapeProperty            = 1 << 11
+        NameProperty            = 1 << 0,
+        TypeProperty            = 1 << 1,
+        VisibleProperty         = 1 << 2,
+        TextProperty            = 1 << 3,
+        TextFontProperty        = 1 << 4,
+        TextAlignmentProperty   = 1 << 5,
+        TextWordWrapProperty    = 1 << 6,
+        TextColorProperty       = 1 << 7,
+        PositionProperty        = 1 << 8,
+        SizeProperty            = 1 << 9,
+        RotationProperty        = 1 << 10,
+        CellProperty            = 1 << 11,
+        ShapeProperty           = 1 << 12,
+        TemplateProperty        = 1 << 13,
+        CustomProperties        = 1 << 14,
+        AllProperties           = 0xFF
     };
 
     Q_DECLARE_FLAGS(ChangedProperties, Property)
 
-    MapObject();
-
-    MapObject(const QString &name, const QString &type,
-              const QPointF &pos,
-              const QSizeF &size);
+    explicit MapObject(const QString &name = QString(),
+                       const QString &type = QString(),
+                       const QPointF &pos = QPointF(),
+                       const QSizeF &size = QSizeF(0, 0));
 
     int id() const;
     void setId(int id);
@@ -200,6 +200,7 @@ public:
 
     QRectF bounds() const;
     QRectF boundsUseTile() const;
+    QRectF screenBounds(const MapRenderer &renderer) const;
 
     const Cell &cell() const;
     void setCell(const Cell &cell);
@@ -220,6 +221,8 @@ public:
     bool isVisible() const;
     void setVisible(bool visible);
 
+    QColor effectiveColor() const;
+
     QVariant mapObjectProperty(Property property) const;
     void setMapObjectProperty(Property property, const QVariant &value);
 
@@ -237,6 +240,7 @@ public:
     const MapObject *templateObject() const;
 
     void syncWithTemplate();
+    void detachFromTemplate();
 
     bool isTemplateInstance() const;
 
@@ -520,10 +524,14 @@ inline MapObject::ChangedProperties MapObject::changedProperties() const
 
 inline void MapObject::setPropertyChanged(Property property, bool state)
 {
+#if QT_VERSION >= 0x050700
+    mChangedProperties.setFlag(property, state);
+#else
     if (state)
         mChangedProperties |= property;
     else
         mChangedProperties &= ~property;
+#endif
 }
 
 inline bool MapObject::propertyChanged(Property property) const

@@ -30,6 +30,7 @@
 
 #include "tiled_global.h"
 
+#include <QRectF>
 #include <QString>
 #include <QUrl>
 
@@ -67,6 +68,7 @@ enum LoadingStatus {
 };
 
 const int CHUNK_SIZE = 16;
+const int CHUNK_SIZE_MIN = 4;
 const int CHUNK_MASK = CHUNK_SIZE - 1;
 
 static const char TILES_MIMETYPE[] = "application/vnd.tile.list";
@@ -75,7 +77,10 @@ static const char LAYERS_MIMETYPE[] = "application/vnd.layer.list";
 static const char TEMPLATES_MIMETYPE[] = "application/vnd.templates.list";
 static const char PROPERTIES_MIMETYPE[] = "application/vnd.properties.list";
 
+TILEDSHARED_EXPORT QPointF alignmentOffset(const QRectF &r, Alignment alignment);
+
 TILEDSHARED_EXPORT QString toFileReference(const QUrl &url, const QDir &dir);
 TILEDSHARED_EXPORT QUrl toUrl(const QString &reference, const QDir &dir);
+TILEDSHARED_EXPORT QString urlToLocalFileOrQrc(const QUrl &url);
 
 } // namespace Tiled

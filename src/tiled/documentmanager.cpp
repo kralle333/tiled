@@ -24,23 +24,27 @@
 #include "abstracttool.h"
 #include "adjusttileindexes.h"
 #include "brokenlinks.h"
+#include "containerhelpers.h"
+#include "editableasset.h"
 #include "editor.h"
 #include "filechangedwarning.h"
 #include "filesystemwatcher.h"
+#include "logginginterface.h"
+#include "map.h"
 #include "mapdocument.h"
 #include "mapeditor.h"
 #include "mapformat.h"
-#include "map.h"
 #include "maprenderer.h"
-#include "mapscene.h"
 #include "mapview.h"
 #include "noeditorwidget.h"
 #include "preferences.h"
+#include "terrain.h"
 #include "tilesetdocument.h"
 #include "tilesetdocumentsmodel.h"
 #include "tilesetmanager.h"
 #include "tmxmapformat.h"
 #include "utils.h"
+#include "wangset.h"
 #include "zoomable.h"
 
 #include <QCoreApplication>
@@ -62,7 +66,6 @@
 #include "qtcompat_p.h"
 
 using namespace Tiled;
-using namespace Tiled::Internal;
 
 
 DocumentManager *DocumentManager::mInstance;
@@ -135,6 +138,141 @@ DocumentManager::DocumentManager(QObject *parent)
 
     connect(TilesetManager::instance(), &TilesetManager::tilesetImagesChanged,
             this, &DocumentManager::tilesetImagesChanged);
+
+    OpenFile::activated = [this] (const OpenFile &open) {
+        openFile(open.file);
+    };
+
+    JumpToTile::activated = [this] (const JumpToTile &jump) {
+        if (auto mapDocument = openMapFile(jump.mapFile)) {
+            auto renderer = mapDocument->renderer();
+            auto mapView = viewForDocument(mapDocument);
+            auto pos = renderer->tileToScreenCoords(jump.tilePos);
+            mapView->forceCenterOn(pos);
+
+            if (auto layer = mapDocument->map()->findLayerById(jump.layerId))
+                mapDocument->switchSelectedLayers({ layer });
+        }
+    };
+
+    JumpToObject::activated = [this] (const JumpToObject &jump) {
+        if (auto mapDocument = openMapFile(jump.mapFile)) {
+            if (auto object = mapDocument->map()->findObjectById(jump.objectId)) {
+                mapDocument->focusMapObjectRequested(object);
+                mapDocument->setSelectedObjects({ object });
+            }
+        }
+    };
+
+    SelectLayer::activated = [this] (const SelectLayer &select) {
+        if (auto mapDocument = openMapFile(select.mapFile)) {
+            if (auto layer = mapDocument->map()->findLayerById(select.layerId)) {
+                mapDocument->switchSelectedLayers({ layer });
+                mapDocument->setCurrentObject(layer);
+            }
+        }
+    };
+
+    SelectCustomProperty::activated = [this] (const SelectCustomProperty &select) {
+        openFile(select.fileName);
+        const int i = findDocument(select.fileName);
+        if (i == -1)
+            return;
+
+        auto doc = mDocuments.at(i).data();
+        Object *obj = nullptr;
+
+        switch (doc->type()) {
+        case Document::MapDocumentType: {
+            auto mapDocument = static_cast<MapDocument*>(doc);
+            switch (select.objectType) {
+            case Object::LayerType:
+                if (auto layer = mapDocument->map()->findLayerById(select.id)) {
+                    mapDocument->switchSelectedLayers({ layer });
+                    obj = layer;
+                }
+                break;
+            case Object::MapObjectType:
+                if (auto object = mapDocument->map()->findObjectById(select.id)) {
+                    mapDocument->focusMapObjectRequested(object);
+                    mapDocument->setSelectedObjects({ object });
+                    obj = object;
+                }
+                break;
+            case Object::MapType:
+                obj = mapDocument->map();
+                break;
+            case Object::ObjectTemplateType:
+                emit templateOpenRequested(select.fileName);
+                // todo: can't access Object pointer
+                break;
+            }
+            break;
+        }
+        case Document::TilesetDocumentType:
+            auto tilesetDocument = static_cast<TilesetDocument*>(doc);
+            switch (select.objectType) {
+            case Object::MapObjectType:
+                // todo: no way to know to which tile this object belongs
+                break;
+            case Object::TerrainType:
+                // todo: select the terrain
+                if (select.id < tilesetDocument->tileset()->terrainCount())
+                    obj = tilesetDocument->tileset()->terrain(select.id);
+                break;
+            case Object::TilesetType:
+                obj = tilesetDocument->tileset().data();
+                break;
+            case Object::TileType:
+                if (auto tile = tilesetDocument->tileset()->findTile(select.id)) {
+                    tilesetDocument->setSelectedTiles({ tile });
+                    obj = tile;
+                }
+                break;
+            case Object::WangSetType: {
+                // todo: select the wang set
+                if (select.id < tilesetDocument->tileset()->wangSetCount())
+                    obj = tilesetDocument->tileset()->wangSet(select.id);
+                break;
+            }
+            case Object::WangColorType:
+                // todo: can't select just by color index
+                break;
+            case Object::ObjectTemplateType:
+                emit templateOpenRequested(select.fileName);
+                // todo: can't access Object pointer
+                break;
+            }
+            break;
+        }
+
+        if (obj) {
+            doc->setCurrentObject(obj);
+            emit selectCustomPropertyRequested(select.propertyName);
+        }
+    };
+
+    SelectTile::activated = [this] (const SelectTile &select) {
+        TilesetDocument* tilesetDocument = nullptr;
+
+        if (SharedTileset tileset { select.tileset }) {
+            tilesetDocument = findTilesetDocument(tileset);
+            if (tilesetDocument) {
+                if (!switchToDocument(tilesetDocument))
+                    addDocument(tilesetDocument->sharedFromThis());
+            }
+        }
+
+        if (!tilesetDocument && !select.tilesetFile.isEmpty())
+            tilesetDocument = openTilesetFile(select.tilesetFile);
+
+        if (tilesetDocument) {
+            if (auto tile = tilesetDocument->tileset()->findTile(select.tileId)) {
+                tilesetDocument->setSelectedTiles({ tile });
+                tilesetDocument->setCurrentObject(tile);
+            }
+        }
+    };
 
     mTabBar->installEventFilter(this);
 }
@@ -253,13 +391,7 @@ int DocumentManager::findDocument(const QString &fileName) const
 #endif
 
     for (int i = 0; i < mDocuments.size(); ++i) {
-        QFileInfo fileInfo(mDocuments.at(i)->fileName());
-        
-#ifdef _WIN32
-        if (toLowerPath == fileInfo.canonicalFilePath().toLower())
-            return i;
-#else
-        if (fileInfo.canonicalFilePath() == canonicalFilePath)
+        if (mDocuments.at(i)->canonicalFilePath() == canonicalFilePath)
             return i;
 #endif
     }
@@ -269,8 +401,7 @@ int DocumentManager::findDocument(const QString &fileName) const
 
 int DocumentManager::findDocument(Document *document) const
 {
-    auto i = std::find(mDocuments.begin(), mDocuments.end(), document);
-    return i != mDocuments.end() ? static_cast<int>(i - mDocuments.begin()) : -1;
+    return indexOf(mDocuments, document);
 }
 
 /**
@@ -352,16 +483,23 @@ void DocumentManager::saveFile()
  */
 void DocumentManager::addDocument(const DocumentPtr &document)
 {
+    insertDocument(mDocuments.size(), document);
+}
+
+void DocumentManager::insertDocument(int index, const DocumentPtr &document)
+{
     Q_ASSERT(document);
     Q_ASSERT(!mDocuments.contains(document));
 
-    mDocuments.append(document);
+    mDocuments.insert(index, document);
     mUndoGroup->addStack(document->undoStack());
 
-    if (auto mapDocument = qobject_cast<MapDocument*>(document.data())) {
+    Document *documentPtr = document.data();
+
+    if (auto mapDocument = qobject_cast<MapDocument*>(documentPtr)) {
         for (const SharedTileset &tileset : mapDocument->map()->tilesets())
             addToTilesetDocument(tileset, mapDocument);
-    } else if (auto tilesetDocument = qobject_cast<TilesetDocument*>(document.data())) {
+    } else if (auto tilesetDocument = qobject_cast<TilesetDocument*>(documentPtr)) {
         // We may have opened a bare tileset that wasn't seen before
         if (!mTilesetDocumentsModel->contains(tilesetDocument)) {
             mTilesetDocumentsModel->append(tilesetDocument);
@@ -373,36 +511,33 @@ void DocumentManager::addDocument(const DocumentPtr &document)
         mFileSystemWatcher->addPath(document->fileName());
 
     if (Editor *editor = mEditorForType.value(document->type()))
-        editor->addDocument(document.data());
+        editor->addDocument(documentPtr);
 
     QString tabText = document->displayName();
     if (document->isModified())
         tabText.prepend(QLatin1Char('*'));
 
-    const int documentIndex = mTabBar->addTab(tabText);
+    const int documentIndex = mTabBar->insertTab(index, tabText);
     mTabBar->setTabToolTip(documentIndex, document->fileName());
 
-    connect(document.data(), &Document::fileNameChanged, this, &DocumentManager::fileNameChanged);
-    connect(document.data(), &Document::modifiedChanged, this, &DocumentManager::modifiedChanged);
-    connect(document.data(), &Document::saved, this, &DocumentManager::documentSaved);
+    connect(documentPtr, &Document::fileNameChanged, this, &DocumentManager::fileNameChanged);
+    connect(documentPtr, &Document::modifiedChanged, this, [=] { updateDocumentTab(documentPtr); });
+    connect(documentPtr, &Document::saved, this, &DocumentManager::onDocumentSaved);
 
-    if (auto *mapDocument = qobject_cast<MapDocument*>(document.data())) {
+    if (auto *mapDocument = qobject_cast<MapDocument*>(documentPtr)) {
         connect(mapDocument, &MapDocument::tilesetAdded, this, &DocumentManager::tilesetAdded);
         connect(mapDocument, &MapDocument::tilesetRemoved, this, &DocumentManager::tilesetRemoved);
-        connect(mapDocument, &MapDocument::tilesetReplaced, this, &DocumentManager::tilesetReplaced);
     }
 
-    if (auto *tilesetDocument = qobject_cast<TilesetDocument*>(document.data())) {
+    if (auto *tilesetDocument = qobject_cast<TilesetDocument*>(documentPtr))
         connect(tilesetDocument, &TilesetDocument::tilesetNameChanged, this, &DocumentManager::tilesetNameChanged);
-    }
 
     switchToDocument(documentIndex);
 
     if (mBrokenLinksModel->hasBrokenLinks())
         mBrokenLinksWidget->show();
 
-    // todo: fix this (move to MapEditor)
-    //    centerViewOn(0, 0);
+    emit documentOpened(documentPtr);
 }
 
 /**
@@ -441,19 +576,10 @@ DocumentPtr DocumentManager::loadDocument(const QString &fileName,
                                           FileFormat *fileFormat,
                                           QString *error)
 {
-    // Return existing document if this file is already open
-    int documentIndex = findDocument(fileName);
-    if (documentIndex != -1)
-        return mDocuments.at(documentIndex);
-
-    // Try to find it in otherwise referenced documents
-    {
-        QString canonicalFilePath = QFileInfo(fileName).canonicalFilePath();
-        for (Document *doc : Document::documentInstances()) {
-            if (QFileInfo(doc->fileName()).canonicalFilePath() == canonicalFilePath)
-                return doc->sharedFromThis();
-        }
-    }
+    // Try to find it in already loaded documents
+    QString canonicalFilePath = QFileInfo(fileName).canonicalFilePath();
+    if (Document *doc = Document::documentInstances().value(canonicalFilePath))
+        return doc->sharedFromThis();
 
     if (!fileFormat) {
         // Try to find a plugin that implements support for this format
@@ -499,13 +625,18 @@ bool DocumentManager::saveDocument(Document *document, const QString &fileName)
     if (fileName.isEmpty())
         return false;
 
+    emit documentAboutToBeSaved(document);
+
     QString error;
     if (!document->save(fileName, &error)) {
-        QMessageBox::critical(mWidget->window(), QCoreApplication::translate("Tiled::Internal::MainWindow", "Error Saving File"), error);
+        QMessageBox::critical(mWidget->window(), QCoreApplication::translate("Tiled::MainWindow", "Error Saving File"), error);
         return false;
     }
 
     Preferences::instance()->addRecentFile(fileName);
+
+    emit documentSaved(document);
+
     return true;
 }
 
@@ -532,7 +663,7 @@ bool DocumentManager::saveDocumentAs(Document *document)
         }
 
         while (true) {
-            fileName = QFileDialog::getSaveFileName(mWidget->window(), QString(),
+            fileName = QFileDialog::getSaveFileName(mWidget->window(), tr("Save File As"),
                                                     fileName,
                                                     filter,
                                                     &selectedFilter);
@@ -541,12 +672,12 @@ bool DocumentManager::saveDocumentAs(Document *document)
                 !Utils::fileNameMatchesNameFilter(QFileInfo(fileName).fileName(), selectedFilter))
             {
                 QMessageBox messageBox(QMessageBox::Warning,
-                                       QCoreApplication::translate("Tiled::Internal::MainWindow", "Extension Mismatch"),
-                                       QCoreApplication::translate("Tiled::Internal::MainWindow", "The file extension does not match the chosen file type."),
+                                       QCoreApplication::translate("Tiled::MainWindow", "Extension Mismatch"),
+                                       QCoreApplication::translate("Tiled::MainWindow", "The file extension does not match the chosen file type."),
                                        QMessageBox::Yes | QMessageBox::No,
                                        mWidget->window());
 
-                messageBox.setInformativeText(QCoreApplication::translate("Tiled::Internal::MainWindow",
+                messageBox.setInformativeText(QCoreApplication::translate("Tiled::MainWindow",
                                                                           "Tiled may not automatically recognize your file when loading. "
                                                                           "Are you sure you want to save with this extension?"));
 
@@ -565,7 +696,7 @@ bool DocumentManager::saveDocumentAs(Document *document)
         FormatHelper<MapFormat> helper(FileFormat::ReadWrite);
         filter = helper.filter();
 
-        auto suggestedFileName = QCoreApplication::translate("Tiled::Internal::MainWindow", "untitled");
+        auto suggestedFileName = QCoreApplication::translate("Tiled::MainWindow", "untitled");
         suggestedFileName.append(QLatin1String(".tmx"));
 
         fileName = getSaveFileName(suggestedFileName);
@@ -585,7 +716,7 @@ bool DocumentManager::saveDocumentAs(Document *document)
 
         auto suggestedFileName = tilesetDocument->tileset()->name().trimmed();
         if (suggestedFileName.isEmpty())
-            suggestedFileName = QCoreApplication::translate("Tiled::Internal::MainWindow", "untitled");
+            suggestedFileName = QCoreApplication::translate("Tiled::MainWindow", "untitled");
         suggestedFileName.append(QLatin1String(".tsx"));
 
         fileName = getSaveFileName(suggestedFileName);
@@ -712,7 +843,7 @@ bool DocumentManager::reloadCurrentDocument()
  * history and current selections. Will not ask the user whether to save
  * any changes!
  *
- * Returns whether the map loaded successfully.
+ * Returns whether the document loaded successfully.
  */
 bool DocumentManager::reloadDocumentAt(int index)
 {
@@ -729,10 +860,12 @@ bool DocumentManager::reloadDocumentAt(int index)
             return false;
         }
 
+        // Save the document state, to ensure the new document will match it
+        static_cast<MapEditor*>(editor(Document::MapDocumentType))->saveDocumentState(mapDocument.data());
+
         // Replace old tab
-        addDocument(newDocument);
-        closeDocumentAt(index);
-        mTabBar->moveTab(mDocuments.size() - 1, index);
+        insertDocument(index, newDocument); // also selects the new document
+        closeDocumentAt(index + 1);
 
         checkTilesetColumns(newDocument.data());
 
@@ -803,11 +936,6 @@ void DocumentManager::fileNameChanged(const QString &fileName,
     updateDocumentTab(document);
 }
 
-void DocumentManager::modifiedChanged()
-{
-    updateDocumentTab(static_cast<Document*>(sender()));
-}
-
 void DocumentManager::updateDocumentTab(Document *document)
 {
     const int index = findDocument(document);
@@ -822,7 +950,7 @@ void DocumentManager::updateDocumentTab(Document *document)
     mTabBar->setTabToolTip(index, document->fileName());
 }
 
-void DocumentManager::documentSaved()
+void DocumentManager::onDocumentSaved()
 {
     Document *document = static_cast<Document*>(sender());
 
@@ -835,11 +963,7 @@ void DocumentManager::documentSaved()
 
 void DocumentManager::documentTabMoved(int from, int to)
 {
-#if QT_VERSION >= 0x050600
     mDocuments.move(from, to);
-#else
-    mDocuments.insert(to, mDocuments.takeAt(from));
-#endif
 }
 
 void DocumentManager::tabContextMenuRequested(const QPoint &pos)
@@ -850,12 +974,19 @@ void DocumentManager::tabContextMenuRequested(const QPoint &pos)
 
     QMenu menu(mTabBar->window());
 
-    Utils::addFileManagerActions(menu, mDocuments.at(index)->fileName());
+    const Document *fileDocument = mDocuments.at(index).data();
+    if (fileDocument->type() == Document::TilesetDocumentType) {
+        auto tilesetDocument = static_cast<const TilesetDocument*>(fileDocument);
+        if (tilesetDocument->isEmbedded())
+            fileDocument = tilesetDocument->mapDocuments().first();
+    }
+
+    Utils::addFileManagerActions(menu, fileDocument->fileName());
 
     menu.addSeparator();
 
     QAction *closeTab = menu.addAction(tr("Close"));
-    closeTab->setIcon(QIcon(QStringLiteral(":/images/16x16/window-close.png")));
+    closeTab->setIcon(QIcon(QStringLiteral(":/images/16/window-close.png")));
     Utils::setThemeIcon(closeTab, "window-close");
     connect(closeTab, &QAction::triggered, [this, index] {
         documentCloseRequested(index);
@@ -885,14 +1016,6 @@ void DocumentManager::tilesetRemoved(Tileset *tileset)
 {
     MapDocument *mapDocument = static_cast<MapDocument*>(QObject::sender());
     removeFromTilesetDocument(tileset->sharedPointer(), mapDocument);
-}
-
-void DocumentManager::tilesetReplaced(int index, Tileset *tileset, Tileset *oldTileset)
-{
-    Q_UNUSED(index)
-    MapDocument *mapDocument = static_cast<MapDocument*>(QObject::sender());
-    addToTilesetDocument(tileset->sharedPointer(), mapDocument);
-    removeFromTilesetDocument(oldTileset->sharedPointer(), mapDocument);
 }
 
 void DocumentManager::tilesetNameChanged(Tileset *tileset)
@@ -940,17 +1063,6 @@ void DocumentManager::hideChangedWarning()
     mFileChangedWarning->setVisible(false);
 }
 
-/**
- * Centers the current map on the pixel coordinates \a x, \a y.
- */
-void DocumentManager::centerMapViewOn(qreal x, qreal y)
-{
-    if (MapView *view = currentMapView()) {
-        auto mapDocument = view->mapScene()->mapDocument();
-        view->centerOn(mapDocument->renderer()->pixelToScreenCoords(x, y));
-    }
-}
-
 TilesetDocument* DocumentManager::findTilesetDocument(const SharedTileset &tileset) const
 {
     return TilesetDocument::findDocumentForTileset(tileset);
@@ -962,7 +1074,7 @@ TilesetDocument* DocumentManager::findTilesetDocument(const QString &fileName) c
     if (canonicalFilePath.isEmpty()) // file doesn't exist
         return nullptr;
 
-    for (auto tilesetDocument : mTilesetDocumentsModel->tilesetDocuments()) {
+    for (const auto &tilesetDocument : mTilesetDocumentsModel->tilesetDocuments()) {
         QString name = tilesetDocument->fileName();
         if (!name.isEmpty() && QFileInfo(name).canonicalFilePath() == canonicalFilePath)
             return tilesetDocument.data();
@@ -1022,6 +1134,20 @@ void DocumentManager::removeFromTilesetDocument(const SharedTileset &tileset, Ma
     }
 }
 
+MapDocument *DocumentManager::openMapFile(const QString &path)
+{
+    openFile(path);
+    const int i = findDocument(path);
+    return i == -1 ? nullptr : qobject_cast<MapDocument*>(mDocuments.at(i).data());
+}
+
+TilesetDocument *DocumentManager::openTilesetFile(const QString &path)
+{
+    openFile(path);
+    const int i = findDocument(path);
+    return i == -1 ? nullptr : qobject_cast<TilesetDocument*>(mDocuments.at(i).data());
+}
+
 static bool mayNeedColumnCountAdjustment(const Tileset &tileset)
 {
     if (tileset.isCollection())
@@ -1046,7 +1172,7 @@ void DocumentManager::tilesetImagesChanged(Tileset *tileset)
     SharedTileset sharedTileset = tileset->sharedPointer();
     QList<Document*> affectedDocuments;
 
-    for (const auto &document : mDocuments) {
+    for (const auto &document : qAsConst(mDocuments)) {
         if (auto mapDocument = qobject_cast<MapDocument*>(document.data())) {
             if (mapDocument->map()->tilesets().contains(sharedTileset))
                 affectedDocuments.append(document.data());

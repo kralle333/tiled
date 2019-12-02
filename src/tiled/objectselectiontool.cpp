@@ -20,6 +20,7 @@
 
 #include "objectselectiontool.h"
 
+#include "changeevents.h"
 #include "changepolygon.h"
 #include "editpolygontool.h"
 #include "geometry.h"
@@ -59,14 +60,10 @@
 #include <cmath>
 
 using namespace Tiled;
-using namespace Tiled::Internal;
 
-namespace Tiled
-{
-namespace Internal
-{
-enum AnchorPosition
-{
+namespace Tiled {
+
+enum AnchorPosition {
     TopLeftAnchor,
     TopRightAnchor,
     BottomLeftAnchor,
@@ -149,6 +146,7 @@ public:
         , mUnderMouse(false)
     {
         setAcceptedMouseButtons(Qt::MouseButtons());
+        setAcceptHoverEvents(true);
         setFlags(QGraphicsItem::ItemIgnoresTransformations |
                  QGraphicsItem::ItemIgnoresParentOpacity);
     }
@@ -330,14 +328,14 @@ void ResizeHandle::paint(QPainter* painter,
     painter->setBrush(brush);
     painter->drawPath(mArrow);
 }
-} // namespace Internal
 } // namespace Tiled
 
 
 ObjectSelectionTool::ObjectSelectionTool(QObject* parent)
-    : AbstractObjectTool(tr("Select Objects"),
-                         QIcon(QLatin1String(":images/22x22/tool-select-objects.png")),
-                         QKeySequence(tr("S")),
+    : AbstractObjectTool("ObjectSelectionTool",
+                         tr("Select Objects"),
+                         QIcon(QLatin1String(":images/22/tool-select-objects.png")),
+                         QKeySequence(Qt::Key_S),
                          parent)
     , mSelectionRectangle(new SelectionRectangle)
     , mOriginIndicator(new OriginIndicator)
@@ -361,9 +359,6 @@ ObjectSelectionTool::ObjectSelectionTool(QObject* parent)
 
 ObjectSelectionTool::~ObjectSelectionTool()
 {
-    delete mSelectionRectangle;
-    delete mOriginIndicator;
-
     for (RotateHandle* handle : mRotateHandles)
         delete handle;
     for (ResizeHandle* handle : mResizeHandles)
@@ -376,16 +371,14 @@ void ObjectSelectionTool::activate(MapScene* scene)
 
     updateHandlesAndOrigin();
 
-    connect(mapDocument(), &MapDocument::objectsChanged,
-            this, &ObjectSelectionTool::updateHandlesAndOrigin);
     connect(mapDocument(), &MapDocument::mapChanged,
             this, &ObjectSelectionTool::updateHandlesAndOrigin);
     connect(mapDocument(), &MapDocument::selectedObjectsChanged,
             this, &ObjectSelectionTool::updateHandlesAndOrigin);
-    connect(mapDocument(), &MapDocument::objectsRemoved,
-            this, &ObjectSelectionTool::objectsRemoved);
+    connect(mapDocument(), &MapDocument::tilesetTileOffsetChanged,
+            this, &ObjectSelectionTool::updateHandlesAndOrigin);
 
-    scene->addItem(mOriginIndicator);
+    scene->addItem(mOriginIndicator.get());
     for (RotateHandle* handle : mRotateHandles)
         scene->addItem(handle);
     for (ResizeHandle* handle : mResizeHandles)
@@ -394,24 +387,22 @@ void ObjectSelectionTool::activate(MapScene* scene)
 
 void ObjectSelectionTool::deactivate(MapScene* scene)
 {
-    scene->removeItem(mOriginIndicator);
+    scene->removeItem(mOriginIndicator.get());
     for (RotateHandle* handle : mRotateHandles)
         scene->removeItem(handle);
     for (ResizeHandle* handle : mResizeHandles)
         scene->removeItem(handle);
 
-    disconnect(mapDocument(), &MapDocument::objectsChanged,
-               this, &ObjectSelectionTool::updateHandlesAndOrigin);
     disconnect(mapDocument(), &MapDocument::mapChanged,
                this, &ObjectSelectionTool::updateHandlesAndOrigin);
     disconnect(mapDocument(), &MapDocument::selectedObjectsChanged,
                this, &ObjectSelectionTool::updateHandlesAndOrigin);
-    disconnect(mapDocument(), &MapDocument::objectsRemoved,
-               this, &ObjectSelectionTool::objectsRemoved);
+    disconnect(mapDocument(), &MapDocument::tilesetTileOffsetChanged,
+               this, &ObjectSelectionTool::updateHandlesAndOrigin);
 
-    mMousePressed = false;
+    abortCurrentAction(Deactivated);
+
     mHoveredObject = nullptr;
-
     mapDocument()->setHoveredMapObject(nullptr);
 
     AbstractObjectTool::deactivate(scene);
@@ -420,7 +411,13 @@ void ObjectSelectionTool::deactivate(MapScene* scene)
 void ObjectSelectionTool::keyPressed(QKeyEvent* event)
 {
     if (mAction != NoAction) {
-        event->ignore();
+        // If we're currently performing some action, the only relevant key to
+        // handle is Escape, to abort it.
+        if (event->key() == Qt::Key_Escape)
+            abortCurrentAction(UserInteraction);
+        else
+            event->ignore();
+
         return;
     }
 
@@ -582,6 +579,8 @@ void ObjectSelectionTool::mouseMoved(const QPointF& pos,
     }
 
     refreshCursor();
+
+    mLastMousePos = pos;
 }
 
 static QGraphicsView* findView(QGraphicsSceneEvent* event)
@@ -751,7 +750,7 @@ void ObjectSelectionTool::mouseReleased(QGraphicsSceneMouseEvent* event)
     }
     case Selecting:
         updateSelection(event->scenePos(), event->modifiers());
-        mapScene()->removeItem(mSelectionRectangle);
+        mapScene()->removeItem(mSelectionRectangle.get());
         mAction = NoAction;
         break;
     case Moving:
@@ -799,7 +798,29 @@ void ObjectSelectionTool::languageChanged()
     AbstractObjectTool::languageChanged();
 
     setName(tr("Select Objects"));
-    setShortcut(QKeySequence(tr("S")));
+}
+
+void ObjectSelectionTool::changeEvent(const ChangeEvent &event)
+{
+    AbstractObjectTool::changeEvent(event);
+
+    if (!mapScene())
+        return;
+
+    switch (event.type) {
+    case ChangeEvent::LayerChanged:
+        if (static_cast<const LayerChangeEvent&>(event).properties & LayerChangeEvent::OffsetProperty)
+            updateHandlesAndOrigin();
+        break;
+    case ChangeEvent::MapObjectsChanged:
+        updateHandlesAndOrigin();
+        break;
+    case ChangeEvent::MapObjectsAboutToBeRemoved:
+        objectsAboutToBeRemoved(static_cast<const MapObjectsEvent&>(event).mapObjects);
+        break;
+    default:
+        break;
+    }
 }
 
 void ObjectSelectionTool::updateHandles()
@@ -810,22 +831,6 @@ void ObjectSelectionTool::updateHandles()
 void ObjectSelectionTool::updateHandlesAndOrigin()
 {
     updateHandlesImpl(true);
-}
-
-static QPointF alignmentOffset(const QRectF &r, Alignment alignment)
-{
-    switch (alignment) {
-    case TopLeft: break;
-    case Top: return QPointF(r.width() / 2, 0);
-    case TopRight: return QPointF(r.width(), 0);
-    case Left: return QPointF(0, r.height() / 2);
-    case Center: return QPointF(r.width() / 2, r.height() / 2);
-    case Right: return QPointF(r.width(), r.height() / 2);
-    case BottomLeft: return QPointF(0, r.height());
-    case Bottom: return QPointF(r.width() / 2, r.height());
-    case BottomRight: return QPointF(r.width(), r.height());
-    }
-    return QPointF();
 }
 
 // TODO: Check whether this function should be moved into MapObject::bounds
@@ -980,14 +985,30 @@ static QTransform objectTransform(MapObject* object, MapRenderer* renderer)
     return transform;
 }
 
+/**
+ * Like QRectF::united, but without the null checks at the start and based on
+ * the assumption that neither rect has negative sizes.
+ */
+static QRectF uniteBounds(const QRectF &a, const QRectF &b)
+{
+    Q_ASSERT(a.width() >= 0.0 && a.height() >= 0.0);
+    Q_ASSERT(b.width() >= 0.0 && b.height() >= 0.0);
+
+    const qreal left = qMin(a.left(), b.left());
+    const qreal right = qMax(a.right(), b.right());
+    const qreal top = qMin(a.top(), b.top());
+    const qreal bottom = qMax(a.bottom(), b.bottom());
+
+    return QRectF(left, top, right - left, bottom - top);
+}
+
 void ObjectSelectionTool::updateHandlesImpl(bool resetOriginIndicator)
 {
     if (mAction == Moving || mAction == Rotating || mAction == Resizing)
         return;
 
-    const QList<MapObject*>& objects = mapDocument()->selectedObjects();
-    const bool showHandles = objects.size() > 0 && (objects.size() > 1 || std::any_of(
-        objects.begin(), objects.end(), canResize));
+    const QList<MapObject*> &objects = mapDocument()->selectedObjects();
+    const bool showHandles = objects.size() > 0 && (objects.size() > 1 || canResize(objects.first()));
 
     if (showHandles) {
         MapRenderer* renderer = mapDocument()->renderer();
@@ -996,8 +1017,9 @@ void ObjectSelectionTool::updateHandlesImpl(bool resetOriginIndicator)
 
         for (int i = 1; i < objects.size(); ++i) {
             MapObject* object = objects.at(i);
-            boundingRect |= objectBounds(object, renderer,
+            QRectF bounds = objectBounds(object, renderer,
                                          objectTransform(object, renderer));
+            boundingRect = uniteBounds(boundingRect, bounds);
         }
 
         QPointF topLeft = boundingRect.topLeft();
@@ -1097,36 +1119,17 @@ void ObjectSelectionTool::updateHandleVisibility()
     mOriginIndicator->setVisible(showOrigin);
 }
 
-void ObjectSelectionTool::objectsRemoved(const QList<MapObject *>& objects)
+void ObjectSelectionTool::objectsAboutToBeRemoved(const QList<MapObject *> &objects)
 {
     if (mClickedObject && objects.contains(mClickedObject))
         mClickedObject = nullptr;
     if (mHoveredObject && objects.contains(mHoveredObject))
         mHoveredObject = nullptr;
 
-    if (mAction != Moving && mAction != Rotating && mAction != Resizing)
-        return;
-
     // Abort move/rotate/resize to avoid crashing...
     // TODO: This should really not be allowed to happen in the first place
-    // since it breaks the undo history, for example.
-    for (int i = mMovingObjects.size() - 1; i >= 0; --i) {
-        const MovingObject& object = mMovingObjects.at(i);
-
-        if (objects.contains(object.mapObject)) {
-            // Avoid referencing the removed object
-            mMovingObjects.remove(i);
-        } else {
-            object.mapObject->setPosition(object.oldPosition);
-            object.mapObject->setSize(object.oldSize);
-            object.mapObject->setPolygon(object.oldPolygon);
-            object.mapObject->setRotation(object.oldRotation);
-        }
-    }
-
-    emit mapDocument()->mapObjectModel()->objectsChanged(changingObjects());
-
-    mMovingObjects.clear();
+    if (mAction == Moving || mAction == Rotating || mAction == Resizing)
+        abortCurrentAction(UserInteraction, objects);
 }
 
 void ObjectSelectionTool::updateHover(const QPointF& pos)
@@ -1275,7 +1278,7 @@ void ObjectSelectionTool::updateSelection(const QPointF& pos,
 void ObjectSelectionTool::startSelecting()
 {
     mAction = Selecting;
-    mapScene()->addItem(mSelectionRectangle);
+    mapScene()->addItem(mSelectionRectangle.get());
 }
 
 void ObjectSelectionTool::startMoving(const QPointF& pos,
@@ -1292,7 +1295,7 @@ void ObjectSelectionTool::startMoving(const QPointF& pos,
     mStart = pos;
     mAction = Moving;
     mAlignPosition = mMovingObjects.first().oldPosition;
-    mOldOriginPosition = mOriginIndicator->pos();
+    mOriginPos = mOriginIndicator->pos();
 
     for (const MovingObject& object : qAsConst(mMovingObjects)) {
         const QPointF& pos = object.oldPosition;
@@ -1318,9 +1321,9 @@ void ObjectSelectionTool::updateMovingItems(const QPointF& pos,
         object.mapObject->setPosition(newPos);
     }
 
-    mapDocument()->mapObjectModel()->emitObjectsChanged(changingObjects(), MapObjectModel::Position);
+    emit mapDocument()->changed(MapObjectsChangeEvent(changingObjects(), MapObject::PositionProperty));
 
-    mOriginIndicator->setPos(mOldOriginPosition + diff);
+    mOriginIndicator->setPos(mOriginPos + diff);
 }
 
 void ObjectSelectionTool::finishMoving(const QPointF& pos)
@@ -1348,13 +1351,13 @@ void ObjectSelectionTool::startMovingOrigin(const QPointF& pos)
 {
     mStart = pos;
     mAction = MovingOrigin;
-    mOldOriginPosition = mOriginIndicator->pos();
+    mOriginPos = mOriginIndicator->pos();
 }
 
 void ObjectSelectionTool::updateMovingOrigin(const QPointF& pos,
                                              Qt::KeyboardModifiers)
 {
-    mOriginIndicator->setPos(mOldOriginPosition + (pos - mStart));
+    mOriginIndicator->setPos(mOriginPos + (pos - mStart));
 }
 
 void ObjectSelectionTool::finishMovingOrigin()
@@ -1367,7 +1370,7 @@ void ObjectSelectionTool::startRotating(const QPointF& pos)
 {
     mStart = pos;
     mAction = Rotating;
-    mOrigin = mOriginIndicator->pos();
+    mOriginPos = mOriginIndicator->pos();
 
     saveSelectionState();
     updateHandleVisibility();
@@ -1378,8 +1381,8 @@ void ObjectSelectionTool::updateRotatingItems(const QPointF& pos,
 {
     MapRenderer* renderer = mapDocument()->renderer();
 
-    const QPointF startDiff = mOrigin - mStart;
-    const QPointF currentDiff = mOrigin - pos;
+    const QPointF startDiff = mOriginPos - mStart;
+    const QPointF currentDiff = mOriginPos - pos;
 
     const qreal startAngle = std::atan2(startDiff.y(), startDiff.x());
     const qreal currentAngle = std::atan2(currentDiff.y(), currentDiff.x());
@@ -1389,17 +1392,16 @@ void ObjectSelectionTool::updateRotatingItems(const QPointF& pos,
     if (modifiers & Qt::ControlModifier)
         angleDiff = std::floor((angleDiff + snap / 2) / snap) * snap;
 
-    const auto& movingObjects = mMovingObjects;
-    for (const MovingObject& object : movingObjects) {
-        MapObject* mapObject = object.mapObject;
+    for (const MovingObject &object : qAsConst(mMovingObjects)) {
+        MapObject *mapObject = object.mapObject;
         const QPointF offset = mapObject->objectGroup()->totalOffset();
 
-        const QPointF oldRelPos = object.oldScreenPosition + offset - mOrigin;
+        const QPointF oldRelPos = object.oldScreenPosition + offset - mOriginPos;
         const qreal sn = std::sin(angleDiff);
         const qreal cs = std::cos(angleDiff);
         const QPointF newRelPos(oldRelPos.x() * cs - oldRelPos.y() * sn,
                                 oldRelPos.x() * sn + oldRelPos.y() * cs);
-        const QPointF newPixelPos = mOrigin + newRelPos - offset;
+        const QPointF newPixelPos = mOriginPos + newRelPos - offset;
         const QPointF newPos = renderer->screenToPixelCoords(newPixelPos);
 
         const qreal newRotation = object.oldRotation + angleDiff * 180 / M_PI;
@@ -1409,7 +1411,10 @@ void ObjectSelectionTool::updateRotatingItems(const QPointF& pos,
             mapObject->setRotation(newRotation);
     }
 
-    mapDocument()->mapObjectModel()->emitObjectsChanged(changingObjects(), MapObjectModel::Position);
+    emit mapDocument()->changed(MapObjectsChangeEvent(changingObjects(), MapObject::ChangedProperties {
+                                                          MapObject::PositionProperty,
+                                                          MapObject::RotationProperty
+                                                      }));
 }
 
 void ObjectSelectionTool::finishRotating(const QPointF& pos)
@@ -1424,9 +1429,8 @@ void ObjectSelectionTool::finishRotating(const QPointF& pos)
     QUndoStack* undoStack = mapDocument()->undoStack();
     undoStack->beginMacro(tr("Rotate %n Object(s)", "", mMovingObjects.size()));
 
-    const auto& movingObjects = mMovingObjects;
-    for (const MovingObject& object : movingObjects) {
-        MapObject* mapObject = object.mapObject;
+    for (const MovingObject &object : qAsConst(mMovingObjects)) {
+        MapObject *mapObject = object.mapObject;
         undoStack->push(new MoveMapObject(mapDocument(), mapObject, object.oldPosition));
         undoStack->push(new RotateMapObject(mapDocument(), mapObject, object.oldRotation));
     }
@@ -1440,7 +1444,7 @@ void ObjectSelectionTool::finishRotating(const QPointF& pos)
 void ObjectSelectionTool::startResizing()
 {
     mAction = Resizing;
-    mOrigin = mOriginIndicator->pos();
+    mOriginPos = mOriginIndicator->pos();
 
     mResizingLimitHorizontal = mClickedResizeHandle->resizingLimitHorizontal();
     mResizingLimitVertical = mClickedResizeHandle->resizingLimitVertical();
@@ -1458,7 +1462,7 @@ void ObjectSelectionTool::updateResizingItems(const QPointF& pos,
 
     QPointF resizingOrigin = mClickedResizeHandle->resizingOrigin();
     if (modifiers & Qt::ShiftModifier)
-        resizingOrigin = mOrigin;
+        resizingOrigin = mOriginPos;
 
     mOriginIndicator->setPos(resizingOrigin);
 
@@ -1501,9 +1505,8 @@ void ObjectSelectionTool::updateResizingItems(const QPointF& pos,
     if (!std::isfinite(scale))
         scale = 1;
 
-    const auto& movingObjects = mMovingObjects;
-    for (const MovingObject& object : movingObjects) {
-        MapObject* mapObject = object.mapObject;
+    for (const MovingObject &object : qAsConst(mMovingObjects)) {
+        MapObject *mapObject = object.mapObject;
         const QPointF offset = mapObject->objectGroup()->totalOffset();
 
         const QPointF oldRelPos = object.oldScreenPosition + offset - resizingOrigin;
@@ -1539,7 +1542,11 @@ void ObjectSelectionTool::updateResizingItems(const QPointF& pos,
         mapObject->setPosition(newPos);
     }
 
-    mapDocument()->mapObjectModel()->emitObjectsChanged(changingObjects(), MapObjectModel::Position);
+    emit mapDocument()->changed(MapObjectsChangeEvent(changingObjects(), MapObject::ChangedProperties {
+                                                          MapObject::PositionProperty,
+                                                          MapObject::SizeProperty,
+                                                          MapObject::ShapeProperty
+                                                      }));
 }
 
 void ObjectSelectionTool::updateResizingSingleItem(const QPointF& resizingOrigin,
@@ -1681,7 +1688,11 @@ void ObjectSelectionTool::updateResizingSingleItem(const QPointF& resizingOrigin
     mapObject->setSize(newSize);
     mapObject->setPosition(newPos);
 
-    mapDocument()->mapObjectModel()->emitObjectsChanged(changingObjects(), MapObjectModel::Position);
+    emit mapDocument()->changed(MapObjectsChangeEvent(changingObjects(), MapObject::ChangedProperties {
+                                                          MapObject::PositionProperty,
+                                                          MapObject::SizeProperty,
+                                                          MapObject::ShapeProperty,
+                                                      }));
 }
 
 void ObjectSelectionTool::finishResizing(const QPointF& pos)
@@ -1696,9 +1707,8 @@ void ObjectSelectionTool::finishResizing(const QPointF& pos)
     QUndoStack* undoStack = mapDocument()->undoStack();
     undoStack->beginMacro(tr("Resize %n Object(s)", "", mMovingObjects.size()));
 
-    const auto& movingObjects = mMovingObjects;
-    for (const MovingObject& object : movingObjects) {
-        MapObject* mapObject = object.mapObject;
+    for (const MovingObject &object : qAsConst(mMovingObjects)) {
+        MapObject *mapObject = object.mapObject;
         undoStack->push(new MoveMapObject(mapDocument(), mapObject, object.oldPosition));
         undoStack->push(new ResizeMapObject(mapDocument(), mapObject, object.oldSize));
 
@@ -1736,6 +1746,66 @@ void ObjectSelectionTool::saveSelectionState()
             mapObject->rotation()
         };
         mMovingObjects.append(object);
+    }
+}
+
+/**
+ * This aborts any in-progress action.
+ *
+ * The \a removedObjects is used to avoid sending the "objectsChanged" signal
+ * for objects that have been removed.
+ */
+void ObjectSelectionTool::abortCurrentAction(AbortReason reason, const QList<MapObject *> &removedObjects)
+{
+    switch (mAction) {
+    case NoAction:
+        break;
+    case Selecting:
+        mapScene()->removeItem(mSelectionRectangle.get());
+        break;
+    case MovingOrigin:
+        mOriginIndicator->setPos(mOriginPos);
+        break;
+    case Moving:
+    case Rotating:
+    case Resizing:
+        // Return the origin indicator to its initial position
+        mOriginIndicator->setPos(mOriginPos);
+
+        // Reset objects to their old transform
+        for (const MovingObject &object : qAsConst(mMovingObjects)) {
+            object.mapObject->setPosition(object.oldPosition);
+            object.mapObject->setSize(object.oldSize);
+            object.mapObject->setPolygon(object.oldPolygon);
+            object.mapObject->setRotation(object.oldRotation);
+        }
+
+        // Don't emit changed for removed objects
+        for (int i = mMovingObjects.size() - 1; i >= 0; --i)
+            if (removedObjects.contains(mMovingObjects.at(i).mapObject))
+                mMovingObjects.remove(i);
+
+        emit mapDocument()->changed(MapObjectsChangeEvent(changingObjects(), MapObject::ChangedProperties {
+                                                              MapObject::PositionProperty,
+                                                              MapObject::SizeProperty,
+                                                              MapObject::RotationProperty,
+                                                              MapObject::ShapeProperty,
+                                                          }));
+        break;
+    }
+
+    mMousePressed = false;
+    mClickedObject = nullptr;
+    mClickedOriginIndicator = nullptr;
+    mClickedResizeHandle = nullptr;
+    mClickedRotateHandle = nullptr;
+    mMovingObjects.clear();
+    mAction = NoAction;
+
+    if (reason != Deactivated) {
+        updateHandles();
+        updateHover(mLastMousePos);
+        refreshCursor();
     }
 }
 

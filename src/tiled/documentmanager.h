@@ -38,9 +38,6 @@ class QTabBar;
 namespace Tiled {
 
 class FileSystemWatcher;
-class ObjectTemplate;
-
-namespace Internal {
 
 class AbstractTool;
 class BrokenLinksModel;
@@ -50,7 +47,6 @@ class Editor;
 class FileChangedWarning;
 class MapDocument;
 class MapEditor;
-class MapScene;
 class MapView;
 class TilesetDocument;
 class TilesetDocumentsModel;
@@ -61,6 +57,11 @@ class TilesetDocumentsModel;
 class DocumentManager : public QObject
 {
     Q_OBJECT
+
+    Q_PROPERTY(Document *currentDocument READ currentDocument NOTIFY currentDocumentChanged)
+
+    DocumentManager(QObject *parent = nullptr);
+    ~DocumentManager() override;
 
 public:
     static DocumentManager *instance();
@@ -93,6 +94,7 @@ public:
     void switchToDocument(MapDocument *mapDocument, QPointF viewCenter, qreal scale);
 
     void addDocument(const DocumentPtr &document);
+    void insertDocument(int index, const DocumentPtr &document);
 
     bool isDocumentModified(Document *document) const;
 
@@ -125,17 +127,21 @@ public:
 
     void openTileset(const SharedTileset &tileset);
 
-    void centerMapViewOn(qreal x, qreal y);
-    void centerMapViewOn(const QPointF &pos)
-    { centerMapViewOn(pos.x(), pos.y()); }
-
     void abortMultiDocumentClose();
 
+    bool eventFilter(QObject *object, QEvent *event) override;
+
 signals:
+    void documentCreated(Document *document);
+    void documentOpened(Document *document);
+    void documentAboutToBeSaved(Document *document);
+    void documentSaved(Document *document);
+
     void fileOpenDialogRequested();
     void fileOpenRequested(const QString &path);
     void fileSaveRequested();
     void templateOpenRequested(const QString &path);
+    void selectCustomPropertyRequested(const QString &name);
     void templateTilesetReplaced();
 
     /**
@@ -169,19 +175,17 @@ public slots:
     void openFile(const QString &path);
     void saveFile();
 
-private slots:
+private:
     void currentIndexChanged();
     void fileNameChanged(const QString &fileName,
                          const QString &oldFileName);
-    void modifiedChanged();
     void updateDocumentTab(Document *document);
-    void documentSaved();
+    void onDocumentSaved();
     void documentTabMoved(int from, int to);
     void tabContextMenuRequested(const QPoint &pos);
 
     void tilesetAdded(int index, Tileset *tileset);
     void tilesetRemoved(Tileset *tileset);
-    void tilesetReplaced(int index, Tileset *tileset, Tileset *oldTileset);
 
     void tilesetNameChanged(Tileset *tileset);
 
@@ -190,16 +194,13 @@ private slots:
 
     void tilesetImagesChanged(Tileset *tileset);
 
-private:
-    DocumentManager(QObject *parent = nullptr);
-    ~DocumentManager() override;
-
     bool askForAdjustment(const Tileset &tileset);
 
     void addToTilesetDocument(const SharedTileset &tileset, MapDocument *mapDocument);
     void removeFromTilesetDocument(const SharedTileset &tileset, MapDocument *mapDocument);
 
-    bool eventFilter(QObject *object, QEvent *event) override;
+    MapDocument *openMapFile(const QString &path);
+    TilesetDocument *openTilesetFile(const QString &path);
 
     QVector<DocumentPtr> mDocuments;
     TilesetDocumentsModel *mTilesetDocumentsModel;
@@ -247,5 +248,4 @@ inline TilesetDocumentsModel *DocumentManager::tilesetDocumentsModel() const
     return mTilesetDocumentsModel;
 }
 
-} // namespace Tiled::Internal
 } // namespace Tiled

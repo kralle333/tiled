@@ -47,14 +47,13 @@ class TileLayer;
 class Tileset;
 class Layer;
 
-namespace Internal {
-
 class Document;
+class EditableTileset;
 class MapDocument;
+class TileStamp;
 class TilesetDocument;
 class TilesetDocumentsFilterModel;
 class TilesetView;
-class TileStamp;
 class Zoomable;
 
 /**
@@ -65,13 +64,12 @@ class TilesetDock : public QDockWidget
 {
     Q_OBJECT
 
+    Q_PROPERTY(Tiled::EditableTileset *currentTileset READ currentEditableTileset WRITE setCurrentEditableTileset)
+
 public:
-    /**
-     * Constructor.
-     */
     TilesetDock(QWidget *parent = nullptr);
 
-    ~TilesetDock();
+    ~TilesetDock() override;
 
     /**
      * Sets the map for which the tilesets should be displayed.
@@ -83,7 +81,16 @@ public:
      */
     Tile *currentTile() const { return mCurrentTile; }
 
+    void setCurrentTileset(const SharedTileset &tileset);
+    SharedTileset currentTileset() const;
+
+    void setCurrentEditableTileset(EditableTileset *tileset);
+    EditableTileset *currentEditableTileset() const;
+
     void selectTilesInStamp(const TileStamp &);
+
+    QAction *actionSelectNextTileset() const { return mSelectNextTileset; }
+    QAction *actionSelectPreviousTileset() const { return mSelectPreviousTileset; }
 
 signals:
     /**
@@ -108,7 +115,7 @@ protected:
     void dragEnterEvent(QDragEnterEvent *) override;
     void dropEvent(QDropEvent *) override;
 
-private slots:
+private:
     void currentTilesetChanged();
     void selectionChanged();
     void currentChanged(const QModelIndex &index);
@@ -137,7 +144,6 @@ private slots:
     void onCurrentLayerChanged(Layer *layer);
     void swapTiles(Tile *tileA, Tile *tileB);
 
-private:
     void setCurrentTile(Tile *tile);
     void setCurrentTiles(TileLayer *tiles);
     void retranslateUi();
@@ -150,7 +156,6 @@ private:
     void onTabMoved(int from, int to);
     void tabContextMenuRequested(const QPoint &pos);
 
-    Tileset *currentTileset() const;
     TilesetView *currentTilesetView() const;
     TilesetView *tilesetViewAt(int index) const;
 
@@ -180,6 +185,9 @@ private:
     QAction *mEditTileset;
     QAction *mDeleteTileset;
     QAction *mToggleAllowedTilesets;
+    QAction *mSelectNextTileset;
+    QAction *mSelectPreviousTileset;
+    QAction *mDynamicWrappingToggle;
 
     QToolButton *mTilesetMenuButton;
     QMenu *mTilesetMenu; //opens on click of mTilesetMenu
@@ -192,5 +200,4 @@ private:
     bool mOnlyShowAllowedTilesets = false;
 };
 
-} // namespace Internal
 } // namespace Tiled

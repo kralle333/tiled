@@ -27,18 +27,20 @@
 #include "mapscene.h"
 #include "tile.h"
 #include "tilelayer.h"
+#include "tilestamp.h"
 
+#include <QKeyEvent>
 #include <QtMath>
 
 using namespace Tiled;
-using namespace Tiled::Internal;
 
-AbstractTileTool::AbstractTileTool(const QString &name,
+AbstractTileTool::AbstractTileTool(Id id,
+                                   const QString &name,
                                    const QIcon &icon,
                                    const QKeySequence &shortcut,
                                    BrushItem *brushItem,
                                    QObject *parent)
-    : AbstractTool(name, icon, shortcut, parent)
+    : AbstractTool(id, name, icon, shortcut, parent)
     , mTilePositionMethod(OnTiles)
     , mBrushItem(brushItem)
     , mBrushVisible(false)
@@ -99,6 +101,44 @@ void AbstractTileTool::mouseMoved(const QPointF &pos, Qt::KeyboardModifiers)
         tilePositionChanged(tilePos);
         updateStatusInfo();
     }
+}
+
+void AbstractTileTool::mousePressed(QGraphicsSceneMouseEvent *event)
+{
+    if (event->button() == Qt::RightButton && event->modifiers() & Qt::ControlModifier) {
+        const QPoint pos = tilePosition();
+        QList<Layer*> layers;
+
+        const bool append = event->modifiers() & Qt::ShiftModifier;
+        const bool selectAll = event->modifiers() & Qt::AltModifier;
+
+        if (append)
+            layers = mapDocument()->selectedLayers();
+
+        LayerIterator it(mapDocument()->map(), Layer::TileLayerType);
+        it.toBack();
+        while (auto tileLayer = static_cast<TileLayer*>(it.previous())) {
+            if (tileLayer->isHidden())
+                continue;
+
+            if (!tileLayer->cellAt(pos - tileLayer->position()).isEmpty()) {
+                if (!layers.contains(tileLayer))
+                    layers.append(tileLayer);
+                else if (append)
+                    layers.removeOne(tileLayer);
+
+                if (!selectAll)
+                    break;
+            }
+        }
+
+        if (!layers.isEmpty())
+            mapDocument()->switchSelectedLayers(layers);
+
+        return;
+    }
+
+    event->ignore();
 }
 
 void AbstractTileTool::mapDocumentChanged(MapDocument *oldDocument,
@@ -182,6 +222,39 @@ QList<Layer *> AbstractTileTool::targetLayers() const
     QList<Layer *> layers;
     if (Layer *layer = currentTileLayer())
         layers.append(layer);
+    return layers;
+}
+
+/**
+ * A helper method that returns the possible target layers of a given \a stamp.
+ */
+QList<Layer *> AbstractTileTool::targetLayersForStamp(const TileStamp &stamp) const
+{
+    QList<Layer*> layers;
+
+    if (!mapDocument())
+        return layers;
+
+    const Map &map = *mapDocument()->map();
+
+    for (const TileStampVariation &variation : stamp.variations()) {
+        LayerIterator it(variation.map, Layer::TileLayerType);
+        const Layer *firstLayer = it.next();
+        const bool isMultiLayer = firstLayer && it.next();
+
+        if (isMultiLayer && !firstLayer->name().isEmpty()) {
+            for (Layer *layer : variation.map->tileLayers()) {
+                TileLayer *target = static_cast<TileLayer*>(map.findLayer(layer->name(), Layer::TileLayerType));
+                if (!layers.contains(target))
+                    layers.append(target);
+            }
+        } else {
+            if (TileLayer *tileLayer = currentTileLayer())
+                if (!layers.contains(tileLayer))
+                    layers.append(tileLayer);
+        }
+    }
+
     return layers;
 }
 

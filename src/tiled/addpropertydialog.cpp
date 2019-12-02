@@ -31,7 +31,6 @@
 #include <QPushButton>
 
 using namespace Tiled;
-using namespace Tiled::Internal;
 
 static const char * const TYPE_KEY = "AddPropertyDialog/PropertyType";
 

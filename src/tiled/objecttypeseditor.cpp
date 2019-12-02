@@ -38,8 +38,9 @@
 #include <QStyledItemDelegate>
 #include <QToolBar>
 
+#include "qtcompat_p.h"
+
 namespace Tiled {
-namespace Internal {
 
 class ColorDelegate : public QStyledItemDelegate
 {
@@ -96,7 +97,6 @@ ObjectTypesEditor::ObjectTypesEditor(QWidget *parent)
     , mObjectTypesModel(new ObjectTypesModel(this))
     , mVariantManager(new VariantPropertyManager(this))
     , mGroupManager(new QtGroupPropertyManager(this))
-    , mUpdating(false)
 {
     mUi->setupUi(this);
     resize(Utils::dpiScaled(size()));
@@ -123,14 +123,14 @@ ObjectTypesEditor::ObjectTypesEditor(QWidget *parent)
     mRemovePropertyAction->setEnabled(false);
     mRenamePropertyAction->setEnabled(false);
 
-    QIcon addIcon(QLatin1String(":/images/22x22/add.png"));
-    QIcon removeIcon(QLatin1String(":/images/22x22/remove.png"));
+    QIcon addIcon(QLatin1String(":/images/22/add.png"));
+    QIcon removeIcon(QLatin1String(":/images/22/remove.png"));
 
     mAddObjectTypeAction->setIcon(addIcon);
     mRemoveObjectTypeAction->setIcon(removeIcon);
     mAddPropertyAction->setIcon(addIcon);
     mRemovePropertyAction->setIcon(removeIcon);
-    mRenamePropertyAction->setIcon(QIcon(QLatin1String(":/images/16x16/rename.png")));
+    mRenamePropertyAction->setIcon(QIcon(QLatin1String(":/images/16/rename.png")));
 
     Utils::setThemeIcon(mAddObjectTypeAction, "add");
     Utils::setThemeIcon(mRemoveObjectTypeAction, "remove");
@@ -192,6 +192,9 @@ ObjectTypesEditor::ObjectTypesEditor(QWidget *parent)
             this, &ObjectTypesEditor::currentItemChanged);
 
     mObjectTypesModel->setObjectTypes(Object::objectTypes());
+
+    Preferences *prefs = Preferences::instance();
+    connect(prefs, &Preferences::objectTypesChanged, this, &ObjectTypesEditor::objectTypesChanged);
 
     retranslateUi();
 }
@@ -273,7 +276,9 @@ void ObjectTypesEditor::applyObjectTypes()
     auto &objectTypes = mObjectTypesModel->objectTypes();
 
     Preferences *prefs = Preferences::instance();
+    mSettingPrefObjectTypes = true;
     prefs->setObjectTypes(objectTypes);
+    mSettingPrefObjectTypes = false;
 
     QString objectTypesFile = prefs->objectTypesFile();
     QDir objectTypesDir = QFileInfo(objectTypesFile).dir();
@@ -288,6 +293,15 @@ void ObjectTypesEditor::applyObjectTypes()
                               .arg(prefs->objectTypesFile(),
                                    serializer.errorString()));
     }
+}
+
+void ObjectTypesEditor::objectTypesChanged()
+{
+    // ignore signal if ObjectTypesEditor caused it
+    if (mSettingPrefObjectTypes)
+        return;
+
+    mObjectTypesModel->setObjectTypes(Object::objectTypes());
 }
 
 void ObjectTypesEditor::applyPropertyToSelectedTypes(const QString &name, const QVariant &value)
@@ -348,7 +362,11 @@ void ObjectTypesEditor::chooseObjectTypesFile()
     }
 
     prefs->setObjectTypesFile(fileName);
+
+    mSettingPrefObjectTypes = true;
     prefs->setObjectTypes(objectTypes);
+    mSettingPrefObjectTypes = false;
+
     mObjectTypesModel->setObjectTypes(objectTypes);
 }
 
@@ -370,14 +388,14 @@ void ObjectTypesEditor::importObjectTypes()
 
     if (serializer.readObjectTypes(fileName, objectTypes)) {
         ObjectTypes currentTypes = mObjectTypesModel->objectTypes();
-        for (const ObjectType &type : objectTypes) {
-            auto it = std::find_if(currentTypes.begin(), currentTypes.end(), [&type](ObjectType &existingType) {
+        for (const ObjectType &type : qAsConst(objectTypes)) {
+            auto it = std::find_if(currentTypes.begin(), currentTypes.end(), [&type](const ObjectType &existingType) {
                 return existingType.name == type.name;
             });
 
             if (it != currentTypes.end()) {
                 it->color = type.color;
-                it->defaultProperties.merge(type.defaultProperties);
+                mergeProperties(it->defaultProperties, type.defaultProperties);
             } else {
                 currentTypes.append(type);
             }
@@ -425,7 +443,7 @@ void ObjectTypesEditor::updateProperties()
 
     for (const QModelIndex &index : selectedRows) {
         ObjectType objectType = mObjectTypesModel->objectTypeAt(index);
-        aggregatedProperties.aggregate(objectType.defaultProperties);
+        aggregateProperties(aggregatedProperties, objectType.defaultProperties);
     }
 
     mAddPropertyAction->setEnabled(!selectedRows.isEmpty());
@@ -546,11 +564,13 @@ void ObjectTypesEditor::renameProperty()
     const QString oldName = item->property()->propertyName();
 
     QInputDialog *dialog = new QInputDialog(mUi->propertiesView);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setInputMode(QInputDialog::TextInput);
     dialog->setLabelText(tr("Name:"));
     dialog->setTextValue(oldName);
     dialog->setWindowTitle(tr("Rename Property"));
-    dialog->open(this, SLOT(renamePropertyTo(QString)));
+    connect(dialog, &QInputDialog::textValueSelected, this, &ObjectTypesEditor::renamePropertyTo);
+    dialog->open();
 }
 
 void ObjectTypesEditor::renamePropertyTo(const QString &name)
@@ -600,5 +620,4 @@ void ObjectTypesEditor::currentItemChanged(QtBrowserItem *item)
     mRenamePropertyAction->setEnabled(itemSelected);
 }
 
-} // namespace Internal
 } // namespace Tiled

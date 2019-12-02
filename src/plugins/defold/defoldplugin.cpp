@@ -29,6 +29,7 @@
 #include "tile.h"
 #include "tilelayer.h"
 
+#include <QCoreApplication>
 #include <QTextStream>
 
 #include <cmath>
@@ -73,11 +74,6 @@ DefoldPlugin::DefoldPlugin()
 {
 }
 
-QStringList DefoldPlugin::outputFiles(const Tiled::Map *, const QString &fileName) const
-{
-    return QStringList() << fileName;
-}
-
 QString DefoldPlugin::nameFilter() const
 {
     return tr("Defold files (*.tilemap)");
@@ -93,8 +89,10 @@ QString DefoldPlugin::errorString() const
     return mError;
 }
 
-bool DefoldPlugin::write(const Tiled::Map *map, const QString &fileName)
+bool DefoldPlugin::write(const Tiled::Map *map, const QString &fileName, Options options)
 {
+    Q_UNUSED(options)
+
     QVariantHash map_h;
 
     QString layers;
@@ -131,7 +129,7 @@ bool DefoldPlugin::write(const Tiled::Map *map, const QString &fileName)
     QString result = replaceTags(QLatin1String(map_t), map_h);
     Tiled::SaveFile mapFile(fileName);
     if (!mapFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        mError = tr("Could not open file for writing.");
+        mError = QCoreApplication::translate("File Errors", "Could not open file for writing.");
         return false;
     }
     QTextStream stream(mapFile.device());

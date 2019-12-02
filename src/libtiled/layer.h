@@ -51,6 +51,13 @@ class TileLayer;
  */
 class TILEDSHARED_EXPORT Layer : public Object
 {
+    Q_OBJECT
+
+    Q_PROPERTY(QString name READ name)
+    Q_PROPERTY(qreal opacity READ opacity)
+    Q_PROPERTY(bool visible READ isVisible)
+    Q_PROPERTY(bool locked READ isLocked)
+    Q_PROPERTY(QPointF offset READ offset)
 
 public:
     enum TypeFlag {
@@ -74,6 +81,7 @@ public:
      */
     int id() const { return mId; }
     void setId(int id) { mId = id; }
+    void resetIds();
 
     /**
      * Returns the type of this layer.
@@ -177,6 +185,8 @@ public:
 
     QPointF totalOffset() const;
 
+    bool canMergeDown() const;
+
     virtual bool isEmpty() const = 0;
 
     /**
@@ -214,7 +224,7 @@ public:
     /**
      * Returns whether this layer can merge together with the \a other layer.
      */
-    virtual bool canMergeWith(Layer *other) const = 0;
+    virtual bool canMergeWith(const Layer *other) const = 0;
 
     /**
      * Returns a newly allocated layer that is the result of merging this layer
@@ -223,7 +233,7 @@ public:
      *
      * Should only be called when canMergeWith returns true.
      */
-    virtual Layer *mergedWith(Layer *other) const = 0;
+    virtual Layer *mergedWith(const Layer *other) const = 0;
 
     /**
      * Returns a duplicate of this layer. The caller is responsible for the

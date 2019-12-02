@@ -29,6 +29,8 @@
 #include <QString>
 #include <QVariant>
 
+#include <memory>
+
 class QUndoStack;
 
 namespace Tiled {
@@ -37,7 +39,8 @@ class FileFormat;
 class Object;
 class Tile;
 
-namespace Internal {
+class ChangeEvent;
+class EditableAsset;
 
 /**
  * Keeps track of a file and its undo history.
@@ -64,6 +67,7 @@ public:
     DocumentType type() const { return mType; }
 
     QString fileName() const;
+    QString canonicalFilePath() const;
 
     /**
      * Returns the name with which to display this document. It is the file name
@@ -90,6 +94,8 @@ public:
     QUndoStack *undoStack() const;
     bool isModified() const;
 
+    Q_INVOKABLE virtual Tiled::EditableAsset *editable() = 0;
+
     Object *currentObject() const { return mCurrentObject; }
     void setCurrentObject(Object *object);
 
@@ -105,15 +111,18 @@ public:
     bool changedOnDisk() const;
     void setChangedOnDisk(bool changedOnDisk);
 
-    QString lastExportFileName() const;
-    void setLastExportFileName(const QString &fileName);
+    virtual QString lastExportFileName() const = 0;
+    virtual void setLastExportFileName(const QString &fileName) = 0;
 
     virtual FileFormat *exportFormat() const = 0;
     virtual void setExportFormat(FileFormat *format) = 0;
 
-    static const QList<Document*> &documentInstances();
+    virtual void checkIssues() = 0;
+
+    static const QHash<QString, Document *> &documentInstances();
 
 signals:
+    void changed(const ChangeEvent &change);
     void saved();
 
     void fileNameChanged(const QString &fileName,
@@ -137,26 +146,37 @@ signals:
 protected:
     void setFileName(const QString &fileName);
 
-    DocumentType mType;
-    QString mFileName;
-    QUndoStack *mUndoStack;
+    void checkFilePathProperties(const Object *object) const;
+
     QDateTime mLastSaved;
 
-    Object *mCurrentObject;             /**< Current properties object. */
+    Object *mCurrentObject = nullptr;   /**< Current properties object. */
 
-    bool mChangedOnDisk;
-    bool mIgnoreBrokenLinks;
-
-    QString mLastExportFileName;
+    std::unique_ptr<EditableAsset> mEditable;
 
 private:
-    static QList<Document*> sDocumentInstances;
+    const DocumentType mType;
+
+    QString mFileName;
+    QString mCanonicalFilePath;
+
+    QUndoStack * const mUndoStack;
+
+    bool mChangedOnDisk = false;
+    bool mIgnoreBrokenLinks = false;
+
+    static QHash<QString, Document*> sDocumentInstances;
 };
 
 
 inline QString Document::fileName() const
 {
     return mFileName;
+}
+
+inline QString Document::canonicalFilePath() const
+{
+    return mCanonicalFilePath;
 }
 
 /**
@@ -178,22 +198,11 @@ inline bool Document::changedOnDisk() const
     return mChangedOnDisk;
 }
 
-inline QString Document::lastExportFileName() const
-{
-    return mLastExportFileName;
-}
-
-inline void Document::setLastExportFileName(const QString &fileName)
-{
-    mLastExportFileName = fileName;
-}
-
-inline const QList<Document *> &Document::documentInstances()
+inline const QHash<QString, Document *> &Document::documentInstances()
 {
     return sDocumentInstances;
 }
 
 using DocumentPtr = QSharedPointer<Document>;
 
-} // namespace Internal
 } // namespace Tiled

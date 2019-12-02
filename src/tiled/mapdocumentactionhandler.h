@@ -32,8 +32,6 @@ namespace Tiled {
 class ObjectGroup;
 class MapObject;
 
-namespace Internal {
-
 class MapDocument;
 
 /**
@@ -75,13 +73,15 @@ public:
     QAction *actionGroupLayers() const { return mActionGroupLayers; }
     QAction *actionUngroupLayers() const { return mActionUngroupLayers; }
 
-    QAction *actionDuplicateLayer() const { return mActionDuplicateLayer; }
-    QAction *actionMergeLayerDown() const { return mActionMergeLayerDown; }
-    QAction *actionRemoveLayer() const { return mActionRemoveLayer; }
+    QAction *actionDuplicateLayers() const { return mActionDuplicateLayers; }
+    QAction *actionMergeLayersDown() const { return mActionMergeLayersDown; }
+    QAction *actionRemoveLayers() const { return mActionRemoveLayers; }
     QAction *actionSelectPreviousLayer() const { return mActionSelectPreviousLayer; }
     QAction *actionSelectNextLayer() const { return mActionSelectNextLayer; }
-    QAction *actionMoveLayerUp() const { return mActionMoveLayerUp; }
-    QAction *actionMoveLayerDown() const { return mActionMoveLayerDown; }
+    QAction *actionMoveLayersUp() const { return mActionMoveLayersUp; }
+    QAction *actionMoveLayersDown() const { return mActionMoveLayersDown; }
+    QAction *actionToggleSelectedLayers() const { return mActionToggleSelectedLayers; }
+    QAction *actionToggleLockSelectedLayers() const { return mActionToggleLockSelectedLayers; }
     QAction *actionToggleOtherLayers() const { return mActionToggleOtherLayers; }
     QAction *actionToggleLockOtherLayers() const { return mActionToggleLockOtherLayers; }
     QAction *actionToggleLayer() const { return mActionToggleLayer; }
@@ -96,7 +96,6 @@ public:
     QMenu *createGroupLayerMenu(QWidget *parent) const;
 
 signals:
-    void mapDocumentChanged(MapDocument *mapDocument);
     void allowedTilesetsChangedForCurrentLayer();
 
 public slots:
@@ -126,13 +125,15 @@ public slots:
     void groupLayers();
     void ungroupLayers();
 
-    void duplicateLayer();
-    void mergeLayerDown();
+    void duplicateLayers();
+    void mergeLayersDown();
     void selectPreviousLayer();
     void selectNextLayer();
-    void moveLayerUp();
-    void moveLayerDown();
-    void removeLayer();
+    void moveLayersUp();
+    void moveLayersDown();
+    void removeLayers();
+    void toggleSelectedLayers();
+    void toggleLockSelectedLayers();
     void toggleOtherLayers();
     void tilesetsAllowed();
     void toggleLockOtherLayers();
@@ -146,10 +147,9 @@ public slots:
 
     void selectAllInstances(const ObjectTemplate *objectTemplate);
 
-private slots:
+private:
     void updateActions();
 
-private:
     MapDocument *mMapDocument;
 
     QAction *mActionSelectAll;
@@ -167,13 +167,15 @@ private:
     QAction *mActionGroupLayers;
     QAction *mActionUngroupLayers;
 
-    QAction *mActionDuplicateLayer;
-    QAction *mActionMergeLayerDown;
-    QAction *mActionRemoveLayer;
+    QAction *mActionDuplicateLayers;
+    QAction *mActionMergeLayersDown;
+    QAction *mActionRemoveLayers;
     QAction *mActionSelectPreviousLayer;
     QAction *mActionSelectNextLayer;
-    QAction *mActionMoveLayerUp;
-    QAction *mActionMoveLayerDown;
+    QAction *mActionMoveLayersUp;
+    QAction *mActionMoveLayersDown;
+    QAction *mActionToggleSelectedLayers;
+    QAction *mActionToggleLockSelectedLayers;
     QAction *mActionToggleOtherLayers;
     QAction *mActionToggleLockOtherLayers;
     QAction *mActionToggleLayer;
@@ -187,5 +189,4 @@ private:
     static MapDocumentActionHandler *mInstance;
 };
 
-} // namespace Internal
 } // namespace Tiled

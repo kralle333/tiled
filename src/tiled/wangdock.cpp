@@ -48,10 +48,8 @@
 #include <QUndoStack>
 
 using namespace Tiled;
-using namespace Tiled::Internal;
 
 namespace Tiled {
-namespace Internal {
 
 static WangSet *firstWangSet(MapDocument *MapDocument)
 {
@@ -98,7 +96,6 @@ protected:
     bool mEnabled;
 };
 
-} // namespace Internal
 } // namespace Tiled
 
 WangDock::WangDock(QWidget *parent)
@@ -135,12 +132,16 @@ WangDock::WangDock(QWidget *parent)
     connect(mProxyModel, &QAbstractItemModel::rowsInserted,
             this, &WangDock::expandRows);
 
-    mAddWangSet->setIcon(QIcon(QStringLiteral(":/images/22x22/add.png")));
-    mRemoveWangSet->setIcon(QIcon(QStringLiteral(":/images/22x22/remove.png")));
+    mAddWangSet->setIcon(QIcon(QStringLiteral(":/images/22/add.png")));
+    mRemoveWangSet->setIcon(QIcon(QStringLiteral(":/images/22/remove.png")));
+    mRemoveWangSet->setEnabled(false);
 
-    mAddEdgeColor->setIcon(QIcon(QStringLiteral(":/images/22x22/add-edge.png")));
-    mAddCornerColor->setIcon(QIcon(QStringLiteral(":/images/22x22/add-corner.png")));
-    mRemoveColor->setIcon(QIcon(QStringLiteral(":/images/22x22/remove.png")));
+    mAddEdgeColor->setIcon(QIcon(QStringLiteral(":/images/22/add-edge.png")));
+    mAddEdgeColor->setEnabled(false);
+    mAddCornerColor->setIcon(QIcon(QStringLiteral(":/images/22/add-corner.png")));
+    mAddCornerColor->setEnabled(false);
+    mRemoveColor->setIcon(QIcon(QStringLiteral(":/images/22/remove.png")));
+    mRemoveColor->setEnabled(false);
 
     Utils::setThemeIcon(mAddWangSet, "add");
     Utils::setThemeIcon(mRemoveWangSet, "remove");
@@ -174,7 +175,6 @@ WangDock::WangDock(QWidget *parent)
 
     mWangTemplateView = new WangTemplateView(w);
     mWangTemplateView->setModel(mWangTemplateModel);
-    mWangTemplateView->setVisible(true);
 
     connect(mWangTemplateView->selectionModel(), &QItemSelectionModel::currentChanged,
             this, &WangDock::refreshCurrentWangId);
@@ -183,14 +183,13 @@ WangDock::WangDock(QWidget *parent)
 
     mWangColorView = new WangColorView(w);
     mWangColorView->setModel(mWangColorFilterModel);
-    mWangColorView->setVisible(true);
 
     connect(mWangColorView->selectionModel(), &QItemSelectionModel::currentRowChanged,
             this, &WangDock::refreshCurrentWangColor);
 
     mEraseWangIdsButton = new QPushButton(this);
     mEraseWangIdsButton->setIconSize(Utils::smallIconSize());
-    mEraseWangIdsButton->setIcon(QIcon(QLatin1String(":images/22x22/stock-tool-eraser.png")));
+    mEraseWangIdsButton->setIcon(QIcon(QLatin1String(":images/22/stock-tool-eraser.png")));
     mEraseWangIdsButton->setCheckable(true);
     mEraseWangIdsButton->setAutoExclusive(true);
     mEraseWangIdsButton->setChecked(mCurrentWangId == 0);
@@ -248,6 +247,7 @@ WangDock::WangDock(QWidget *parent)
     vertical->setMargin(0);
     vertical->addWidget(wangViews);
 
+    hideTemplateColorView();
     setWidget(w);
     retranslateUi();
 }
@@ -303,7 +303,6 @@ void WangDock::setDocument(Document *document)
 
         mTemplateAndColorView->setTabEnabled(0, true);
         mTemplateAndColorView->tabBar()->show();
-        setTemplateView();
 
         /*
          * Removing a wangset usually changes the selected wangset without the
@@ -609,7 +608,6 @@ void WangDock::onCurrentWangIdChanged(WangId wangId)
 void WangDock::setTemplateView()
 {
     mTemplateAndColorWidget->setVisible(true);
-
     mTemplateAndColorView->setCurrentIndex(0);
     retranslateUi();
 }
@@ -617,9 +615,7 @@ void WangDock::setTemplateView()
 void WangDock::setColorView()
 {
     mTemplateAndColorWidget->setVisible(true);
-
     mTemplateAndColorView->setCurrentIndex(1);
-
     retranslateUi();
 }
 
