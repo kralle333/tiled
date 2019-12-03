@@ -35,6 +35,12 @@
 using namespace Tiled;
 using namespace Tiled::Internal;
 
+static const char * const ORIENTATION_KEY = "Map/Orientation"; 
+static const char * const FIXED_SIZE_KEY = "Map/FixedSize";
+static const char * const MAP_WIDTH_KEY = "Map/Width";
+static const char * const MAP_HEIGHT_KEY = "Map/Height";
+static const char * const TILE_WIDTH_KEY = "Map/TileWidth";
+static const char * const TILE_HEIGHT_KEY = "Map/TileHeight";
 
 NewMapFromTemplateDialog::NewMapFromTemplateDialog(QWidget *parent) :
     QDialog(parent),
@@ -77,7 +83,7 @@ void NewMapFromTemplateDialog::openFile()
         if (fileName != mPath) {
             mUi->mappath->setText(fileName);
             mPath = fileName;
-            mMap = tmxp.read(fileName);
+           // mMap = tmxp.Read(fileName);
             mUi->mapWidth->setValue(mMap->width());
             mUi->mapHeight->setValue(mMap->height());
         }
@@ -119,13 +125,14 @@ void NewMapFromTemplateDialog::comboBoxIndexChanged(const QString &text)
         TmxMapFormat tmxp;
         mUi->mappath->setText(fileName);
         mPath = fileName;
-        mMap = tmxp.read(fileName);
+      //  mMap = tmxp.read(fileName); 
         if (mMap != nullptr) {
             mUi->mapWidth->setValue(mMap->width());
             mUi->mapHeight->setValue(mMap->height());
         }
     }
 }
+
 
 MapDocumentPtr NewMapFromTemplateDialog::createMap()
 {
@@ -138,13 +145,44 @@ MapDocumentPtr NewMapFromTemplateDialog::createMap()
         return nullptr;
     }
 
-    MapDocument *newDocument = new MapDocument(mMap);
+   /*
+      std::unique_ptr<Map> map{ new Map(orientation,
+                                      mapWidth, mapHeight,
+                                      tileWidth, tileHeight,
+                                      !fixedSize) };
 
-    QSize newSize(mUi->mapWidth->value(), mUi->mapHeight->value());
-    eraseLayerContents(newDocument->map()->layers());
-    QPoint offset;
-    newDocument->resizeMap(newSize, offset, false);
-    return MapDocumentPtr::create(mMap);
+    map->setLayerDataFormat(layerFormat);
+    map->setRenderOrder(renderOrder);
+
+    const size_t gigabyte = 1073741824u;
+    const size_t memory = size_t(mapWidth) * size_t(mapHeight) * sizeof(Cell);
+
+    // Add a tile layer to new maps of reasonable size
+    if (memory < gigabyte) {
+        map->addLayer(new TileLayer(QCoreApplication::translate("Tiled::MapDocument", "Tile Layer %1").arg(1),
+                                    0, 0,
+                                    mapWidth, mapHeight));
+    } else {
+        const double gigabytes = static_cast<double>(memory) / gigabyte;
+        QMessageBox::warning(this, tr("Memory Usage Warning"),
+                             tr("Tile layers for this map will consume %L1 GB "
+                                "of memory each. Not creating one by default.")
+                             .arg(gigabytes, 0, 'f', 2));
+    }
+
+    // Store settings for next time
+    Preferences *prefs = Preferences::instance();
+    prefs->setLayerDataFormat(layerFormat);
+    prefs->setMapRenderOrder(renderOrder);
+    QSettings *s = Preferences::instance()->settings();
+    s->setValue(QLatin1String(ORIENTATION_KEY), orientation);
+    s->setValue(QLatin1String(FIXED_SIZE_KEY), fixedSize);
+    s->setValue(QLatin1String(MAP_WIDTH_KEY), mapWidth);
+    s->setValue(QLatin1String(MAP_HEIGHT_KEY), mapHeight);
+    s->setValue(QLatin1String(TILE_WIDTH_KEY), tileWidth);
+    s->setValue(QLatin1String(TILE_HEIGHT_KEY), tileHeight);*/
+
+    return nullptr;
 }
 void NewMapFromTemplateDialog::updateMapFileWidgets(bool checked)
 {

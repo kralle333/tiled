@@ -492,7 +492,7 @@ void ObjectSelectionTool::keyPressed(QKeyEvent* event)
 
         MapRenderer* renderer = mapDocument()->renderer();
 
-        mOrigin = mOriginIndicator->pos();
+        auto mOrigin = mOriginIndicator->pos();
 
 
         QUndoStack* undoStack = mapDocument()->undoStack();

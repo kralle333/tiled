@@ -20,7 +20,7 @@
 
 #include "setallowedtilesetsdialog.h"
 
-using namespace Tiled::Internal;
+using namespace Tiled;
 
 SetAllowedTilesetsDialog::SetAllowedTilesetsDialog(QWidget *parent) :
     QDialog(parent),

@@ -1538,7 +1538,7 @@ QtVariantProperty *PropertyBrowser::createCustomProperty(const QString &name, co
     QtVariantProperty* property = createProperty(CustomProperty, type, name);
     property->setValue(value);
     if (type == QtVariantPropertyManager::enumTypeId()) {
-        property->setAttribute(QLatin1String("enumNames"), Properties::getEnumsWithName(mObject, name));
+        property->setAttribute(QLatin1String("enumNames"), mObject->getEnumsWithName(name));
     }
 
     mCustomPropertiesGroup->insertSubProperty(property, precedingProperty);
@@ -1901,7 +1901,7 @@ void PropertyBrowser::updateCustomProperties()
     qDebug() << "refresh";
     while (it.hasNext()) {
         it.next();
-        QStringList enums = Properties::getEnumsWithName(mObject, it.key());
+        QStringList enums = mObject->getEnumsWithName(it.key());
         int type = enums.isEmpty() ? it.value().userType() : VariantPropertyManager::enumTypeId();
         QtVariantProperty *property = addProperty(CustomProperty,
                                                   type,

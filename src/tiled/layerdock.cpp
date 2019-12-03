@@ -100,8 +100,6 @@ LayerDock::LayerDock(QWidget *parent):
     buttonContainer->addAction(handler->actionToggleOtherLayers());
     buttonContainer->addAction(handler->actionToggleLockOtherLayers());
     buttonContainer->addSeparator();
-    buttonContainer->addAction(handler->actionToggleLayer());
-    buttonContainer->addAction(handler->actionLockLayer());
     buttonContainer->addWidget(spacerWidget);
     buttonContainer->addAction(ActionManager::action("HighlightCurrentLayer"));
 
@@ -437,9 +435,6 @@ void LayerView::contextMenuEvent(QContextMenuEvent *event)
         menu.addAction(handler->actionToggleLockSelectedLayers());
         menu.addAction(handler->actionToggleOtherLayers());
         menu.addAction(handler->actionToggleLockOtherLayers());
-        menu.addSeparator();
-        menu.addAction(handler->actionToggleLayer());
-        menu.addAction(handler->actionLockLayer());
         menu.addSeparator();
         menu.addAction(handler->actionAllowedTilesets());        
         menu.addAction(handler->actionLayerProperties());

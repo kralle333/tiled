@@ -201,8 +201,6 @@ MapDocumentActionHandler::MapDocumentActionHandler(QObject *parent)
     connect(mActionToggleLockSelectedLayers, &QAction::triggered, this, &MapDocumentActionHandler::toggleLockSelectedLayers);
     connect(mActionToggleOtherLayers, &QAction::triggered, this, &MapDocumentActionHandler::toggleOtherLayers);
     connect(mActionToggleLockOtherLayers, &QAction::triggered, this, &MapDocumentActionHandler::toggleLockOtherLayers);
-    connect(mActionToggleLayer, &QAction::triggered, this, &MapDocumentActionHandler::toggleLayer);
-    connect(mActionLockLayer, &QAction::triggered, this, &MapDocumentActionHandler::lockLayer);
 
 
     connect(mActionLayerProperties, &QAction::triggered, this, &MapDocumentActionHandler::layerProperties);
@@ -552,7 +550,7 @@ void MapDocumentActionHandler::focusOnCurrentObject()
             MapObject *mapObject = static_cast<MapObject*>(object);
             const QPointF center = mapObject->bounds().center();
             const QPointF offset = mapObject->objectGroup()->totalOffset();
-            DocumentManager::instance()->currentMapView->forceCenterOn(center + offset);
+            DocumentManager::instance()->currentMapView()->forceCenterOn(center + offset);
         }
     }
 }
@@ -577,7 +575,7 @@ void MapDocumentActionHandler::findObjectWithId()
                 MapObject *mapObject = static_cast<MapObject*>(object);
                 const QPointF center = mapObject->bounds().center();
                 const QPointF offset = mapObject->objectGroup()->totalOffset();
-                DocumentManager::instance()->->currentMapView->forceCenterOn(center + offset);
+                DocumentManager::instance()->currentMapView()->forceCenterOn(center + offset);
                 objectFound = true;
                 QList<MapObject*> selectedObjects;
                 selectedObjects.append(mapObject);
@@ -626,7 +624,7 @@ void MapDocumentActionHandler::findObjectsWithTag()
         auto mapObject = selectedObjects.first();
         const QPointF center = mapObject->bounds().center();
         const QPointF offset = mapObject->objectGroup()->totalOffset();
-        DocumentManager::instance()->currentMapView->forceCenterOn(center + offset);
+        DocumentManager::instance()->currentMapView()->forceCenterOn(center + offset);
         mMapDocument->setSelectedObjects(selectedObjects);
     }
 }
@@ -843,18 +841,6 @@ void MapDocumentActionHandler::toggleLockOtherLayers()
 {
     if (mMapDocument)
         mMapDocument->toggleLockOtherLayers(mMapDocument->selectedLayers());
-}
-
-void MapDocumentActionHandler::toggleLayer()
-{
-    if (mMapDocument)
-        mMapDocument->toggleLayer(mMapDocument->currentLayer());
-}
-
-void MapDocumentActionHandler::lockLayer()
-{
-    if (mMapDocument)
-        mMapDocument->lockLayer(mMapDocument->currentLayer());
 }
 
 

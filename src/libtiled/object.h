@@ -140,6 +140,9 @@ public:
     static const ObjectTypes &objectTypes()
     { return mObjectTypes; }
 
+    QMap<QString, QStringList> getEnums();
+    QStringList getEnumsWithName(QString name);
+
 private:
     const TypeId mTypeId;
     Properties mProperties;

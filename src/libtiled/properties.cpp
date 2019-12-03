@@ -111,47 +111,6 @@ int filePathTypeId()
     return qMetaTypeId<FilePath>();
 }
 
-QMap<QString, QStringList> Properties::getEnums(Object* propertyObject)
-{
-    QMap<QString, QStringList> enums;
-    if (propertyObject)
-    {
-        switch (propertyObject->typeId())
-        {
-        case Object::MapObjectType:
-            {
-                MapObject* mapObject = static_cast<MapObject*>(propertyObject);
-                if (mapObject && mapObject->cell().tileset())
-                {
-                    enums = mapObject->cell().tileset()->enums();
-                }
-                break;
-            }
-        case Object::TileType:
-            {
-                Tile* tileObject = static_cast<Tile*>(propertyObject);
-                if (tileObject && tileObject->tileset())
-                {
-                    enums = tileObject->tileset()->enums();
-                }
-                break;
-            }
-        default: //Unsupported type 
-            break;
-        }
-    }
-    return enums;
-}
-
-QStringList Properties::getEnumsWithName(Object* propertyObject, QString name)
-{
-    auto enums = getEnums(propertyObject);
-    if(enums.contains(name))
-    {
-        return enums[name];
-    }
-    return QStringList();
-}
 
 QString typeToName(int type)
 {

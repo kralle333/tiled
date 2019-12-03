@@ -24,7 +24,6 @@
 
 namespace Tiled {
 
-namespace Internal {
 
 
 class GenerateCroppedRectangle : public QUndoCommand
@@ -41,5 +40,4 @@ private:
     QMap<Tile*, QRectF> oldCroppedRectangles;
 };
 
-} // namespace Internal
 } // namespace Tiled

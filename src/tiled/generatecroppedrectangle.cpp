@@ -5,8 +5,6 @@
 #include <QApplication>
 
 namespace Tiled {
-namespace Internal {
-
 //CroppedBoundsX: Iterate left to right, top down to find the first pixel where alpha!=0
 //Example: Iterating from left to right we find that every column of pixels have alpha=0 until we reach x=3,
 //Therefore for this tile the cropped rectangle bounds starts at x=3
@@ -90,7 +88,5 @@ void GenerateCroppedRectangle::undo()
     for (Tile* tile : oldCroppedRectangles.keys()) {
         tile->setCroppedRectangle(oldCroppedRectangles.value(tile));
     }
-}
-
 }
 }

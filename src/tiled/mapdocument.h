@@ -171,6 +171,8 @@ public:
     void toggleLockLayers(const QList<Layer *> &layers);
     void toggleOtherLayers(const QList<Layer *> &layers);
     void toggleLockOtherLayers(const QList<Layer *> &layers);
+    void toggleLayer(Layer *layer);
+    void lockLayer(Layer *layer);
 
     void insertTileset(int index, const SharedTileset &tileset);
     void removeTilesetAt(int index);

@@ -390,12 +390,6 @@ int DocumentManager::findDocument(const QString &fileName) const
     const QString toLowerPath = canonicalFilePath.toLower();
 #endif
 
-    for (int i = 0; i < mDocuments.size(); ++i) {
-        if (mDocuments.at(i)->canonicalFilePath() == canonicalFilePath)
-            return i;
-#endif
-    }
-
     return -1;
 }
 

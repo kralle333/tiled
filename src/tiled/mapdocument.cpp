@@ -70,7 +70,7 @@
 #include "changeevents.h"
 #include "qtcompat_p.h"
 
-using namespace Tiled;
+using namespace Tiled; 
 
 MapDocument::MapDocument(std::unique_ptr<Map> map)
     : Document(MapDocumentType, map->fileName)
@@ -804,23 +804,6 @@ void MapDocument::toggleOtherLayers(const QList<Layer *> &layers)
 void MapDocument::toggleLockOtherLayers(const QList<Layer *> &layers)
 {
     mLayerModel->toggleLockOtherLayers(layers);
-}
-
-/**
-* Toggle visibility of current layer
-*/
-void MapDocument::toggleLayer(Layer *layer)
-{
-    mLayerModel->setLayerVisible(layer, !layer->isVisible());
-}
-
-
-/**
-* Toggle lock of current layer
-*/
-void MapDocument::lockLayer(Layer *layer)
-{
-    mLayerModel->setLayerLocked(layer, layer->isUnlocked());
 }
 
 

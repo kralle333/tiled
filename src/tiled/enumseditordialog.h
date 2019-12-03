@@ -27,7 +27,6 @@ class EnumsEditorDialog;
 }
 
 namespace Tiled {
-namespace Internal {
 
 class EnumsEditorDialog : public QDialog
 {
@@ -55,5 +54,4 @@ private:
     QMap<QString, QStringList> mEnums;
 };
 
-} // namespace Internal
 } // namespace Tiled

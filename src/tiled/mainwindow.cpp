@@ -461,9 +461,6 @@ MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
     mLayerMenu->addAction(mActionHandler->actionToggleOtherLayers());
     mLayerMenu->addAction(mActionHandler->actionToggleLockOtherLayers());
     mLayerMenu->addSeparator();
-    mLayerMenu->addAction(mActionHandler->actionToggleLayer());
-    mLayerMenu->addAction(mActionHandler->actionLockLayer());
-    mLayerMenu->addSeparator();
     mLayerMenu->addAction(mActionHandler->actionLayerProperties());
 
     menuBar()->insertMenu(mUi->menuHelp->menuAction(), mLayerMenu);
@@ -840,6 +837,7 @@ void MainWindow::newMap()
 
     mDocumentManager->addDocument(mapDocument);
 }
+/*
 void MainWindow::newMapFromTemplate()
 {
     NewMapFromTemplateDialog newMapDialog(this);
@@ -849,7 +847,8 @@ void MainWindow::newMapFromTemplate()
         return;
 
     mDocumentManager->addDocument(mapDocument);
-}
+}*/
+
 bool MainWindow::openFile(const QString &fileName, FileFormat *fileFormat)
 {
     if (fileName.isEmpty())

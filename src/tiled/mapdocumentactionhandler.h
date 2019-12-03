@@ -85,7 +85,6 @@ public:
     QAction *actionToggleOtherLayers() const { return mActionToggleOtherLayers; }
     QAction *actionToggleLockOtherLayers() const { return mActionToggleLockOtherLayers; }
     QAction *actionToggleLayer() const { return mActionToggleLayer; }
-    QAction *actionLockLayer() const { return mActionLockLayer; }
     QAction *actionAllowedTilesets() const { return mActionTilesetsAllowed; }
     QAction *actionLayerProperties() const { return mActionLayerProperties; }
 
@@ -137,8 +136,6 @@ public slots:
     void toggleOtherLayers();
     void tilesetsAllowed();
     void toggleLockOtherLayers();
-    void toggleLayer();
-    void lockLayer();
     void layerProperties();
 
     void duplicateObjects();
@@ -179,7 +176,6 @@ private:
     QAction *mActionToggleOtherLayers;
     QAction *mActionToggleLockOtherLayers;
     QAction *mActionToggleLayer;
-    QAction *mActionLockLayer;
     QAction *mActionTilesetsAllowed;
     QAction *mActionLayerProperties;
 

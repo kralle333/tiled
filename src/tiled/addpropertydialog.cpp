@@ -54,8 +54,9 @@ AddPropertyDialog::AddPropertyDialog(QWidget *parent,Object *propertyObject)
     mUi->typeBox->addItem(typeToName(filePathTypeId()), QVariant::fromValue(FilePath()));
     mUi->typeBox->addItem(typeToName(QVariant::Int),    0);
     mUi->typeBox->addItem(stringType,                   QString());
-
-    for (const auto element : Properties::getEnums(propertyObject).toStdMap())
+    
+    auto enums = propertyObject->getEnums();
+    for (const auto element : enums.toStdMap())
     {
         mUi->typeBox->addItem(element.first, QtVariantPropertyManager::enumTypeId());
     }

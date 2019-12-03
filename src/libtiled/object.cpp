@@ -94,6 +94,43 @@ QVariant Object::inheritedProperty(const QString &name) const
     return QVariant();
 }
 
+QMap<QString, QStringList> Object::getEnums()
+{
+    QMap<QString, QStringList> enums;
+        switch (this->typeId()) {
+        case Object::MapObjectType:
+        {
+            MapObject* mapObject = static_cast<MapObject*>(this);
+            if (mapObject && mapObject->cell().tileset()) {
+                enums = mapObject->cell().tileset()->enums();
+            }
+            break;
+        }
+        case Object::TileType:
+        {
+            Tile* tileObject = static_cast<Tile*>(this);
+            if (tileObject && tileObject->tileset()) {
+                enums = tileObject->tileset()->enums();
+            }
+            break;
+        }
+        default: //Unsupported type 
+            break;
+        }
+    
+    return enums;
+}
+
+QStringList Object::getEnumsWithName(QString name)
+{
+    auto enums = getEnums();
+    if (enums.contains(name)) {
+        return enums[name];
+    }
+    return QStringList();
+}
+
+
 void Object::setObjectTypes(const ObjectTypes &objectTypes)
 {
     mObjectTypes = objectTypes;

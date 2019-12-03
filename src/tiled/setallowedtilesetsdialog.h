@@ -30,7 +30,6 @@ class SetAllowedTilesetsDialog;
 }
 
 namespace Tiled {
-namespace Internal {
 
 class SetAllowedTilesetsDialog : public QDialog
 {
@@ -55,6 +54,5 @@ private:
     bool mWasListChanged = false;
 };
 
-} // namespace Internal
 } // namespace Tiled
 

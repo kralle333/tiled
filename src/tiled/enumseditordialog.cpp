@@ -21,7 +21,7 @@
 #include "enumseditordialog.h"
 #include <QInputDialog>
 
-using namespace Tiled::Internal;
+using namespace Tiled;
 
 EnumsEditorDialog::EnumsEditorDialog(QWidget* parent) :
     QDialog(parent),

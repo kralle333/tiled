@@ -43,15 +43,7 @@ namespace Tiled {
     QUrl url;
 };
 
-/**
- * Collection of properties and their values.
- */
-class TILEDSHARED_EXPORT Properties : public QMap<QString,QVariant>
-{
-public:
-    static QMap<QString, QStringList> getEnums(Object* propertyObject);
-    static QStringList getEnumsWithName(Object* propertyObject, QString name);
-};
+using Properties = QVariantMap; 
 
 class TILEDSHARED_EXPORT AggregatedPropertyData
 {

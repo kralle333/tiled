@@ -2,10 +2,9 @@
 #include <QCoreApplication>
 
 namespace Tiled {
-namespace Internal {
 
 
-Tiled::Internal::ModifyEnumList::ModifyEnumList(Tileset* tileset,
+ModifyEnumList::ModifyEnumList(Tileset* tileset,
                                                 const QMap<QString, QStringList>& newEnums,
                                                 const QMap<QString, QStringList>& oldEnums) :
     mTileset(tileset),
@@ -16,4 +15,4 @@ Tiled::Internal::ModifyEnumList::ModifyEnumList(Tileset* tileset,
 }
 
 }
-}
+

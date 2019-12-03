@@ -31,8 +31,6 @@ namespace Tiled {
 class GroupLayer;
 class Layer;
 
-namespace Internal {
-
 class MapDocument;
 
 class ModifyEnumList : public QUndoCommand
@@ -58,6 +56,5 @@ private:
     QMap<QString, QStringList> mNewEnums;
     QMap<QString, QStringList> mOldEnums;
 };
-} // namespace Internal
 } // namespace Tiled
 
