@@ -1,4 +1,4 @@
 qbs
 
-rem p4 edit C:\CE\tools\tiled-dev\
+rem p4 edit C:\dfh\tools\tiled-dev\
 xcopy default\install-root\ C:\CE\tools\tiled-dev\ /H /S /Y /D
