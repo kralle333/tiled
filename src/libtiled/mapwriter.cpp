@@ -82,6 +82,8 @@ public:
 
     bool openFile(SaveFile *file);
 
+
+	QString errorString() const;
     QString mError;
     Map::LayerDataFormat mLayerDataFormat;
     bool mDtdEnabled;
@@ -141,7 +143,9 @@ public:
         setAutoFormatting(true);
         setAutoFormattingIndent(1);
     }
+
 };
+
 
 } // anonymous namespace
 
@@ -163,8 +167,24 @@ void MapWriterPrivate::writeMap(const Map *map, QIODevice *device,
 
     writeMap(writer, *map);
     writer.writeEndDocument();
+	if(!errorString().isEmpty())
+	{
+		device->errorString() = errorString();
+	}
 }
 
+QString MapWriter::errorString() const
+{
+	return d->errorString();
+}
+
+QString MapWriterPrivate::errorString() const
+{
+	if (!mError.isEmpty()) {
+		return mError;
+	}
+	return tr("");
+}
 void MapWriterPrivate::writeTileset(const Tileset &tileset, QIODevice *device,
                                     const QString &path)
 {
@@ -776,6 +796,7 @@ static bool shouldWrite(bool holdsInfo, bool isTemplateInstance, bool changed)
     return isTemplateInstance ? changed : holdsInfo;
 }
 
+
 void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
                                    const MapObject &mapObject)
 {
@@ -833,8 +854,28 @@ void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
     {
 		//Copy properties so we can edit them
 		Properties mapObjectProperties;
-		mapObjectProperties.merge(mapObject.cell().tile()->properties()); // First copy the over the properties defined in the tileset
-		mapObjectProperties.merge(mapObject.properties()); // Then overlay that with the properties that were changed on the map object
+		auto tilesetProperties = mapObject.cell().tile()->properties();
+
+    	// Copy properties from tileset and from the object in such a way that we respect casing
+    	for(auto tilesetIt = tilesetProperties.begin(); tilesetIt!=tilesetProperties.end();++tilesetIt)
+    	{
+			bool found = false;
+    		for(auto it = mapObject.properties().begin();it!= mapObject.properties().end();++it)
+    		{
+    			if(tilesetIt.key().toLower() == it.key().toLower())
+    			{
+					found = true;
+    				// Insert and correct casing
+					mapObjectProperties.insert(tilesetIt.key(), it.value());
+					break;
+    			}
+    		}
+    		if(!found)
+    		{
+    			// No property matched, insert it
+				mapObjectProperties.insert(tilesetIt.key(),tilesetIt.value());
+    		}
+    	}
 
 		//Convert enum properties from int to strings
         auto enums = mapObject.cell().tileset()->enums();
@@ -846,12 +887,40 @@ void MapWriterPrivate::writeObject(QXmlStreamWriter &w,
             for (; it != it_end; ++it) {
                 if(enums.contains(it.key()))
                 {
-                    int enumIndex = it.value().toInt();
-                    if(enumIndex >= enums[it.key()].count())
-                    {
-                        // Quick fix to ensure enum value is valid
-                        enumIndex = 0;
-                    }
+					int enumIndex = 0;
+                	// type should be int! We need to correct it by finding the right index
+                	if(it.value().type() == QVariant::String)
+                	{
+						bool foundValue = false;
+						auto enumIt = enums[it.key()].begin();
+						auto enumItEnd = enums[it.key()].end();
+                		for(;enumIt != enumItEnd;++enumIt)
+                		{
+							if(*enumIt == it.value().toString())
+							{
+								enumIndex = enumIt - enums[it.key()].begin();
+								foundValue = true;
+								break;
+							}
+                		}
+                		if(!foundValue)
+                		{
+							mError.append(tr("Object with id %1 has invalid enum value %2 for property %3 \n").
+								arg(mapObject.id()).
+								arg(it.value().toString()).
+								arg(it.key()));
+							return;
+                		}
+                	}
+                	else
+                	{
+						enumIndex = it.value().toInt();
+                		if (enumIndex >= enums[it.key()].count())
+						{
+							mError.append(tr("Object with id %1 has invalid enum index %2 for property %3 \n").arg(mapObject.id()).arg(enumIndex).arg(it.key()));
+							return;
+						}
+                	}
                     mapObjectProperties[it.key()] = enums[it.key()].at(enumIndex);
                 }
             }
@@ -1076,6 +1145,11 @@ bool MapWriter::writeMap(const Map *map, const QString &fileName)
 
     writeMap(map, file.device(), QFileInfo(fileName).absolutePath());
 
+	if(!d->mError.isEmpty())
+	{
+		return false;
+	}
+
     if (file.error() != QFileDevice::NoError) {
         d->mError = file.errorString();
         return false;
@@ -1141,11 +1215,6 @@ bool MapWriter::writeObjectTemplate(const ObjectTemplate *objectTemplate, const 
     }
 
     return true;
-}
-
-QString MapWriter::errorString() const
-{
-    return d->mError;
 }
 
 void MapWriter::setDtdEnabled(bool enabled)
